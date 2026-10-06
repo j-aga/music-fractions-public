@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FractionBeats — Fill the Bar!</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <style>
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    .shake { animation: shake 0.45s ease-in-out; }
+
+    @keyframes segment-pop {
+      0% { transform: scaleY(0.3); opacity: 0.5; }
+      60% { transform: scaleY(1.15); }
+      100% { transform: scaleY(1); opacity: 1; }
+    }
+    .segment-fill { animation: segment-pop 0.35s ease-out forwards; }
+
+    @keyframes pulse-win {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+      50% { box-shadow: 0 0 0 12px rgba(34, 197, 94, 0); }
+    }
+    .play-win { animation: pulse-win 1.5s ease-in-out infinite; }
+
+    .note-card.locked { opacity: 0.92; }
+    .btn-beat:disabled { cursor: default; }
+
+    #staff-canvas { touch-action: manipulation; display: block; }
+
+    .controls-toolbar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    @media (min-width: 1024px) {
+      .controls-toolbar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 2rem;
+      }
+    }
+    @media (min-width: 1280px) {
+      .controls-toolbar { flex-wrap: nowrap; }
+    }
+
+    #levelplay-section {
+      width: 100%;
+      max-width: 92rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #note-cards .bar-card-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.625rem;
+      width: 100%;
+    }
+    @media (min-width: 1280px) {
+      #note-cards .bar-card-row {
+        flex-wrap: nowrap;
+      }
+    }
+
+    .bar-progress-active {
+      border-color: #4f46e5 !important;
+      background: rgba(224, 231, 255, 0.9) !important;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25), 0 8px 20px rgba(79, 70, 229, 0.15);
+      transform: scale(1.03);
+    }
+    .bar-progress-dimmed { opacity: 0.55; }
+
+    @keyframes star-pop {
+      0% { transform: scale(0.3) rotate(-12deg); opacity: 0; }
+      70% { transform: scale(1.2) rotate(4deg); }
+      100% { transform: scale(1) rotate(0); opacity: 1; }
+    }
+    .star-pop { animation: star-pop 0.5s ease-out forwards; }
+    .star-pop-delay-1 { animation-delay: 0.15s; opacity: 0; }
+    .star-pop-delay-2 { animation-delay: 0.3s; opacity: 0; }
+
+    .level-card { transition: transform 0.2s, box-shadow 0.2s; }
+    .level-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(79, 70, 229, 0.15); }
+
+    .user-btn-active { border-color: #4f46e5 !important; background: #eef2ff !important; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.35); }
+    .palette-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-sky-100 via-amber-50 to-pink-100 font-sans text-slate-800">
+
+  <!-- ========== USER SELECT SCREEN ========== -->
+  <div id="screen-user" class="min-h-screen flex flex-col items-center justify-center px-4 py-8">
+    <div class="text-center max-w-lg mb-8">
+      <h1 class="text-4xl sm:text-5xl font-extrabold text-indigo-600 drop-shadow-sm tracking-tight">
+        FractionBeats
+      </h1>
+      <p class="mt-2 text-base sm:text-lg text-indigo-500 font-medium">
+        Who is playing today?
+      </p>
+    </div>
+    <div id="user-select-grid" class="flex flex-col sm:flex-row gap-4 w-full max-w-lg"></div>
+    <a href="index.html"
+      class="mt-8 text-sm font-semibold text-slate-400 hover:text-indigo-500 underline underline-offset-2 transition-colors">
+      ← All Apps
+    </a>
+  </div>
+
+  <!-- ========== HOME SCREEN ========== -->
+  <div id="screen-home" class="hidden min-h-screen flex flex-col items-center justify-center px-4 py-8">
+    <div id="user-switcher-home" class="mb-4 flex flex-wrap justify-center gap-2"></div>
+    <div class="text-center max-w-lg">
+      <h1 class="text-4xl sm:text-5xl font-extrabold text-indigo-600 drop-shadow-sm tracking-tight">
+        FractionBeats
+      </h1>
+      <p id="home-greeting" class="mt-2 text-base sm:text-lg text-indigo-500 font-medium"></p>
+      <p id="home-total-stars" class="mt-3 text-sm font-bold text-amber-600"></p>
+    </div>
+    <div class="mt-8 flex flex-col items-center gap-3 w-full max-w-sm">
+      <button id="btn-continue"
+        class="w-full px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 hover:from-indigo-600 hover:to-violet-600 active:scale-95 text-white font-extrabold text-xl shadow-xl transition-all">
+        Continue Journey
+      </button>
+      <p id="continue-label" class="text-sm font-semibold text-slate-500 text-center"></p>
+      <button id="btn-all-levels-home"
+        class="w-full px-6 py-3 rounded-xl bg-white hover:bg-indigo-50 active:scale-95 text-indigo-600 font-extrabold text-base border-2 border-indigo-200 shadow-md transition-all">
+        All Levels
+      </button>
+      <button id="btn-freeplay-home"
+        class="w-full px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-extrabold text-base shadow-md transition-all">
+        🎨 Free Play
+      </button>
+      <a href="index.html"
+        class="text-sm font-semibold text-slate-400 hover:text-indigo-500 underline underline-offset-2 transition-colors mt-2">
+        ← All Apps
+      </a>
+      <button id="btn-switch-user"
+        class="text-sm font-semibold text-slate-400 hover:text-indigo-500 underline underline-offset-2 transition-colors">
+        Switch player
+      </button>
+    </div>
+  </div>
+
+  <!-- ========== LEVEL SELECT SCREEN ========== -->
+  <div id="screen-levels" class="hidden min-h-screen px-4 sm:px-6 lg:px-10 py-6">
+    <div class="max-w-5xl mx-auto">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <button id="btn-back-home"
+          class="px-4 py-2 rounded-xl bg-white border-2 border-slate-200 text-slate-600 font-bold text-sm hover:border-indigo-300 active:scale-95 transition-all">
+          ← Home
+        </button>
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-indigo-600">Choose a Level</h2>
+        <p id="levels-total-stars" class="text-sm font-bold text-amber-600 w-full sm:w-auto text-center sm:text-right"></p>
+      </div>
+      <div id="user-switcher-levels" class="flex flex-wrap justify-center gap-2 mb-4"></div>
+      <div id="level-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    </div>
+  </div>
+
+  <!-- ========== RESULTS SCREEN ========== -->
+  <div id="screen-results" class="hidden min-h-screen flex flex-col items-center justify-center px-4 py-8">
+    <div class="bg-white/90 rounded-3xl shadow-2xl border-2 border-green-200 p-6 sm:p-10 max-w-md w-full text-center">
+      <p class="text-sm font-bold uppercase tracking-wide text-green-600 mb-1">Level Complete!</p>
+      <h2 id="results-level-name" class="text-2xl sm:text-3xl font-extrabold text-indigo-600"></h2>
+      <p id="results-message" class="mt-2 text-sm text-slate-600 font-medium"></p>
+      <div id="results-stars" class="flex justify-center gap-3 my-6 text-5xl"></div>
+      <p id="results-stats" class="text-xs text-slate-500 font-medium mb-6"></p>
+      <div class="flex flex-col gap-2">
+        <button id="btn-results-next"
+          class="px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white font-extrabold shadow-lg transition-all">
+          Next Level →
+        </button>
+        <button id="btn-results-retry"
+          class="px-6 py-3 rounded-xl bg-violet-100 hover:bg-violet-200 active:scale-95 text-violet-700 font-extrabold border-2 border-violet-200 transition-all">
+          Play Again
+        </button>
+        <button id="btn-results-levels"
+          class="px-6 py-3 rounded-xl bg-white hover:bg-slate-50 active:scale-95 text-slate-600 font-bold border-2 border-slate-200 transition-all">
+          All Levels
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== GAME SCREEN ========== -->
+  <div id="screen-game" class="hidden">
+  <header class="text-center px-4 pt-3 pb-1">
+    <p id="game-player-label" class="mb-2 text-xs font-bold text-indigo-500"></p>
+    <div class="flex flex-wrap items-center justify-center gap-2 mb-1">
+      <button id="btn-levels-from-game"
+        class="px-3 py-1 rounded-full bg-white border-2 border-indigo-200 text-indigo-600 font-bold text-xs hover:bg-indigo-50 active:scale-95 transition-all">
+        ★ Levels
+      </button>
+      <button id="btn-home-from-game"
+        class="px-3 py-1 rounded-full bg-white border-2 border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 active:scale-95 transition-all">
+        Home
+      </button>
+      <span id="game-level-badge" class="px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 font-extrabold text-xs"></span>
+    </div>
+    <h1 class="text-2xl sm:text-3xl font-extrabold text-indigo-600 drop-shadow-sm tracking-tight">
+      FractionBeats
+    </h1>
+    <p id="game-level-desc" class="mt-0.5 text-sm sm:text-base text-indigo-500 font-medium"></p>
+    <button id="btn-new-header"
+      class="mt-2 px-5 py-1.5 rounded-full bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white font-bold text-sm shadow-md transition-all">
+      Try Again
+    </button>
+  </header>
+
+  <main class="w-full max-w-none mx-auto px-4 sm:px-6 lg:px-10 pb-4 space-y-3">
+
+    <div class="w-full max-w-[700px] mx-auto space-y-3">
+    <!-- Bar navigation (shown for 2-bar levels only) -->
+    <section id="bar-nav-section" class="text-center hidden">
+      <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Which bar are you working on?</p>
+      <div id="bar-nav-group" class="flex flex-nowrap justify-center gap-2"></div>
+    </section>
+
+    <!-- Staff canvas (2 bars side by side) -->
+    <section class="bg-white/80 backdrop-blur rounded-2xl shadow-lg border-2 border-indigo-100 px-2 py-2 sm:px-3 h-[100px] sm:h-[115px]">
+      <canvas id="staff-canvas" class="w-full h-full rounded-lg" aria-label="Musical staff showing two bars"></canvas>
+    </section>
+    </div>
+
+    <!-- Feedback message -->
+    <p id="feedback" class="text-center text-sm font-semibold min-h-[1.25rem] text-rose-500 transition-opacity" aria-live="polite"></p>
+
+    <!-- Level mode: note answer cards (wider than staff/progress bar) -->
+    <section id="levelplay-section">
+      <section id="note-cards" class="flex flex-col items-center gap-3 w-full"></section>
+    </section>
+
+    <!-- Free Play mode: build your own rhythm -->
+    <section id="freeplay-section" class="hidden space-y-3">
+      <div class="flex flex-wrap justify-center gap-2">
+        <button id="fp-bars-1" data-bars="1"
+          class="fp-bar-btn px-4 py-2 rounded-xl text-sm font-extrabold border-2 border-indigo-300 bg-indigo-100 text-indigo-700 active:scale-95 transition-all">
+          1 Bar
+        </button>
+        <button id="fp-bars-2" data-bars="2"
+          class="fp-bar-btn px-4 py-2 rounded-xl text-sm font-extrabold border-2 border-slate-200 bg-white text-slate-600 active:scale-95 transition-all">
+          2 Bars
+        </button>
+      </div>
+      <p id="freeplay-status" class="text-center text-sm font-semibold text-slate-600"></p>
+      <div id="freeplay-bar-focus" class="hidden flex flex-wrap justify-center gap-2"></div>
+      <div class="bg-white/90 rounded-2xl border-2 border-emerald-200 p-3">
+        <p class="text-xs font-bold text-emerald-700 uppercase tracking-wide text-center mb-2">Tap to add notes & rests</p>
+        <div id="freeplay-palette" class="flex flex-wrap justify-center gap-2"></div>
+      </div>
+      <div id="freeplay-items-list" class="space-y-2"></div>
+    </section>
+
+    <div class="w-full max-w-[700px] mx-auto space-y-3">
+    <!-- Beats progress (per bar + overall) — level mode only -->
+    <section id="progress-section" class="bg-white/90 rounded-2xl shadow-lg border-2 border-amber-200 p-3 sm:p-4 space-y-3">
+      <h2 id="progress-heading" class="text-lg sm:text-xl font-extrabold text-center text-amber-600">
+        Watch the bar fill up!
+      </h2>
+
+      <p id="beats-text-overall" class="text-center text-base sm:text-lg font-bold text-slate-700">
+        Overall: 0 / 8 beats
+      </p>
+
+      <div id="bar-progress-bars" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <!-- Per-bar progress injected by JS -->
+      </div>
+
+      <p id="equation-text" class="text-center text-sm sm:text-base text-indigo-500 font-medium">
+        Tap the buttons to add beats!
+      </p>
+    </section>
+    </div>
+
+    <!-- Win message (brief — results screen follows) -->
+    <div id="win-banner" class="hidden text-center bg-green-100 border-2 border-green-300 rounded-2xl p-3 shadow-md">
+      <p id="win-banner-text" class="text-lg sm:text-xl font-extrabold text-green-600">
+        Perfect rhythm!
+      </p>
+    </div>
+
+    <!-- Bottom controls -->
+    <section class="flex flex-col items-center gap-2">
+      <div class="flex flex-wrap justify-center gap-3">
+        <button id="btn-play"
+          class="px-6 py-2.5 rounded-xl bg-violet-500 hover:bg-violet-600 active:scale-95 text-white font-extrabold text-base shadow-lg transition-all">
+          Play the Rhythm
+        </button>
+        <button id="btn-hint"
+          class="px-6 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 active:scale-95 text-white font-extrabold text-base shadow-lg transition-all">
+          Hint
+        </button>
+        <button id="btn-new-footer"
+          class="px-6 py-2.5 rounded-xl bg-indigo-400 hover:bg-indigo-500 active:scale-95 text-white font-extrabold text-base shadow-lg transition-all">
+          Try Again
+        </button>
+        <button id="btn-clear-freeplay"
+          class="hidden px-6 py-2.5 rounded-xl bg-rose-400 hover:bg-rose-500 active:scale-95 text-white font-extrabold text-base shadow-lg transition-all">
+          Clear All
+        </button>
+      </div>
+      <p id="audio-status" class="text-center text-xs font-semibold min-h-[1.1rem] text-amber-600" aria-live="polite">
+        Tap Play to enable sound
+      </p>
+    </section>
+  </main>
+  </div><!-- /screen-game -->
+
+  <script>
+    /* ============================================================
+       FractionBeats — Level system (Phase 5)
+       Internal units (sixteenths):
+         semiquaver = 1, quaver = 2, dotted quaver = 3, crotchet = 4,
+         dotted crotchet = 6, minim = 8, semibreve = 16
+       Each segment in the fill bar = 1 unit = ¼ beat
+       ============================================================ */
+
+    // --- Constants ---
+    const NOTE_TYPES = {
+      semibreve:       { label: 'Semibreve',       symbol: '\uD834\uDD5D', units: 16, beats: 4,    dotted: false },
+      minim:           { label: 'Minim',           symbol: '\uD834\uDD5E', units: 8,  beats: 2,    dotted: false },
+      dotted_crotchet: { label: 'Dotted Crotchet', symbol: '\uD834\uDD5F', units: 6,  beats: 1.5,  dotted: true,  dotExplain: 'A dotted crotchet is worth 1½ beats.' },
+      crotchet:        { label: 'Crotchet',        symbol: '\uD834\uDD5F', units: 4,  beats: 1,    dotted: false },
+      dotted_quaver:   { label: 'Dotted Quaver',   symbol: '\uD834\uDD60', units: 3,  beats: 0.75, dotted: true,  dotExplain: 'A dotted quaver is worth ¾ of a beat.' },
+      quaver:          { label: 'Quaver',          symbol: '\uD834\uDD60', units: 2,  beats: 0.5,  dotted: false },
+      semiquaver:      { label: 'Semiquaver',      symbol: '\uD834\uDD61', units: 1,  beats: 0.25, dotted: false },
+    };
+    const REST_TYPES = {
+      semibreve:       { label: 'Semibreve Rest',       symbol: '\uD834\uDD7B', units: 16, beats: 4,    dotted: false },
+      minim:           { label: 'Minim Rest',           symbol: '\uD834\uDD7C', units: 8,  beats: 2,    dotted: false },
+      dotted_crotchet: { label: 'Dotted Crotchet Rest', symbol: '\uD834\uDD7D', units: 6,  beats: 1.5,  dotted: true,  dotExplain: 'A dotted crotchet rest is worth 1½ beats.' },
+      crotchet:        { label: 'Crotchet Rest',        symbol: '\uD834\uDD7D', units: 4,  beats: 1,    dotted: false },
+      dotted_quaver:   { label: 'Dotted Quaver Rest',   symbol: '\uD834\uDD7E', units: 3,  beats: 0.75, dotted: true,  dotExplain: 'A dotted quaver rest is worth ¾ of a beat.' },
+      quaver:          { label: 'Quaver Rest',          symbol: '\uD834\uDD7E', units: 2,  beats: 0.5,  dotted: false },
+      semiquaver:      { label: 'Semiquaver Rest',      symbol: '\uD834\uDD7F', units: 1,  beats: 0.25, dotted: false },
+    };
+    const UNIT_TO_TYPE = {
+      1: 'semiquaver', 2: 'quaver', 3: 'dotted_quaver', 4: 'crotchet',
+      6: 'dotted_crotchet', 8: 'minim', 16: 'semibreve',
+    };
+    const ALL_UNIT_VALUES = [1, 2, 3, 4, 6, 8, 16];
+    const BEAMABLE_TYPES = new Set(['quaver', 'semiquaver', 'dotted_quaver']);
+    const MAX_SEGMENTS = 16;
+    const MIN_NOTES = 3;
+    const MAX_NOTES = 8;
+    const MAX_CONSECUTIVE_SEMIQUAVERS = 4;
+    const MAX_CONSECUTIVE_QUAVERS = 3;
+    const TYPE_TO_UNIT = {
+      semiquaver: 1, quaver: 2, dotted_quaver: 3, crotchet: 4,
+      dotted_crotchet: 6, minim: 8, semibreve: 16,
+    };
+    const STORAGE_KEY = 'fractionbeats_v2';
+    const LEGACY_STORAGE_KEY = 'fractionbeats_progress';
+
+    const USERS = [
+      { id: 'christian', name: 'Christian', emoji: '👦' },
+      { id: 'mum', name: 'Mum', emoji: '👩' },
+      { id: 'dad', name: 'Dad', emoji: '👨' },
+    ];
+
+    const FREEPLAY_TYPES = [
+      { kind: 'note', type: 'semibreve' }, { kind: 'note', type: 'minim' },
+      { kind: 'note', type: 'dotted_crotchet' }, { kind: 'note', type: 'crotchet' },
+      { kind: 'note', type: 'dotted_quaver' }, { kind: 'note', type: 'quaver' },
+      { kind: 'note', type: 'semiquaver' },
+      { kind: 'rest', type: 'minim' }, { kind: 'rest', type: 'crotchet' },
+      { kind: 'rest', type: 'quaver' }, { kind: 'rest', type: 'semiquaver' },
+    ];
+
+    const LEVELS = [
+      { id: 1, name: 'Only Beats', emoji: '🥁',
+        description: 'Only crotchets — each note is exactly 1 beat.',
+        numBars: 1, beatsPerBar: 4, allowedTypes: ['crotchet'], allowRests: false },
+      { id: 2, name: 'Mix in Halves', emoji: '🎵',
+        description: 'Mostly crotchets with a few quavers mixed in.',
+        numBars: 1, beatsPerBar: 4, allowedTypes: ['crotchet', 'quaver'], allowRests: false,
+        quaverMin: 1, quaverMax: 2 },
+      { id: 3, name: 'Mostly Halves', emoji: '🎶',
+        description: 'Lots of quavers — quavers are worth ½ a beat!',
+        numBars: 1, beatsPerBar: 4, allowedTypes: ['crotchet', 'quaver'], allowRests: false,
+        quaverMin: 3 },
+      { id: 4, name: 'Smallest Notes', emoji: '✨',
+        description: 'Meet the semiquaver — worth ¼ of a beat!',
+        numBars: 1, beatsPerBar: 4, allowedTypes: ['crotchet', 'quaver', 'semiquaver'], allowRests: false,
+        minSemiquavers: 1 },
+      { id: 5, name: 'Fast & Steady', emoji: '⚡',
+        description: 'Mix crotchets, quavers, and semiquavers together.',
+        numBars: 1, beatsPerBar: 4, allowedTypes: ['crotchet', 'quaver', 'semiquaver'], allowRests: false },
+      { id: 6, name: 'Adding Silence', emoji: '🤫',
+        description: 'A few rests appear — silence counts too!',
+        numBars: 1, beatsPerBar: 4, allowedTypes: ['crotchet', 'quaver', 'semiquaver', 'minim'], allowRests: true,
+        restCountMin: 1, restCountMax: 2 },
+      { id: 7, name: 'Rests Everywhere', emoji: '😴',
+        description: 'Lots of rests in every rhythm!',
+        numBars: 1, beatsPerBar: 4, allowedTypes: ['crotchet', 'quaver', 'semiquaver', 'minim'], allowRests: true,
+        restCountMin: 2, restCountMax: 4 },
+      { id: 8, name: 'Dotted Notes', emoji: '💫',
+        description: 'Dotted notes last longer — 1½ and ¾ beats!',
+        numBars: 1, beatsPerBar: 4,
+        allowedTypes: ['crotchet', 'quaver', 'semiquaver', 'minim', 'dotted_crotchet', 'dotted_quaver'], allowRests: true,
+        minDotted: 1, restCountMin: 0, restCountMax: 2 },
+      { id: 9, name: 'Dotted + Fast', emoji: '🚀',
+        description: 'Dotted notes with speedy semiquavers!',
+        numBars: 1, beatsPerBar: 4,
+        allowedTypes: ['crotchet', 'quaver', 'semiquaver', 'dotted_crotchet', 'dotted_quaver'], allowRests: true,
+        minDotted: 1, minSemiquavers: 1 },
+      { id: 10, name: 'Two Bars', emoji: '🎼',
+        description: 'Fill TWO bars in a row — notes only!',
+        numBars: 2, beatsPerBar: 4,
+        allowedTypes: ['crotchet', 'quaver', 'semiquaver', 'minim', 'dotted_crotchet', 'dotted_quaver'], allowRests: false },
+      { id: 11, name: 'Two Bars with Rests', emoji: '🎹',
+        description: 'Two bars with notes AND rests together.',
+        numBars: 2, beatsPerBar: 4,
+        allowedTypes: ['crotchet', 'quaver', 'semiquaver', 'minim', 'dotted_crotchet', 'dotted_quaver'], allowRests: true,
+        restCountMin: 1, restCountMax: 3 },
+      { id: 12, name: 'Master Challenge', emoji: '🏆',
+        description: 'The ultimate test — can you earn 3 stars?',
+        numBars: 2, beatsPerBar: 4,
+        allowedTypes: ['crotchet', 'quaver', 'semiquaver', 'minim', 'dotted_crotchet', 'dotted_quaver', 'semibreve'], allowRests: true,
+        hardMode: true },
+    ];
+
+    // --- State ---
+    let currentUserId = 'christian';
+    let currentLevelId = 1;
+    let isFreePlay = false;
+    let freePlayBarFocus = 0;
+    let completedRhythmSnapshot = null;
+    let numBars = 1;
+    let targetBeatsPerBar = 4;
+    let unitsPerBar = 16;
+    let totalTargetBeats = 4;
+    let totalTargetUnits = 16;
+    let timeSignature = '4/4';
+    let bars = [];
+    let segmentFillsPerBar = [];
+    let filledUnitsPerBar = [];
+    let filledUnits = 0;
+    let won = false;
+    let rhythmMode = 'notes';
+    let barView = 'all';
+    let sessionWrong = 0;
+    let sessionHints = 0;
+    let levelStartTime = 0;
+    let lastEarnedStars = 0;
+
+    /** Look up display info for a note or rest item. */
+    function getItemMeta(item) {
+      return item.kind === 'rest' ? REST_TYPES[item.type] : NOTE_TYPES[item.type];
+    }
+
+    function getCurrentLevel() {
+      if (isFreePlay) {
+        return { id: 0, name: 'Free Play', numBars, beatsPerBar: 4, allowedTypes: Object.keys(TYPE_TO_UNIT), allowRests: true };
+      }
+      return LEVELS.find(l => l.id === currentLevelId) || LEVELS[0];
+    }
+
+    function getCurrentUser() {
+      return USERS.find(u => u.id === currentUserId) || USERS[0];
+    }
+
+    function getLevelAllowedUnits(maxUnits) {
+      const level = getCurrentLevel();
+      const units = level.allowedTypes.map(t => TYPE_TO_UNIT[t]).filter(u => u <= maxUnits);
+      return units.length ? units : [4];
+    }
+
+    function getValidUnits(maxUnits) {
+      return getLevelAllowedUnits(maxUnits);
+    }
+
+    function formatBeatLabel(beats) {
+      if (beats === 4) return '4';
+      if (beats === 2) return '2';
+      if (beats === 1.5) return '1½';
+      if (beats === 1) return '1';
+      if (beats === 0.75) return '¾';
+      if (beats === 0.5) return '½';
+      if (beats === 0.25) return '¼';
+      return String(beats);
+    }
+
+    /** Build plausible beat-value buttons for each card (always includes the correct answer). */
+    function getBeatOptionsForItem(item) {
+      const correct = getItemMeta(item).beats;
+      const pool = [4, 2, 1.5, 1, 0.75, 0.5, 0.25].filter(b => b !== correct);
+      const distractors = pool
+        .sort((a, b) => Math.abs(a - correct) - Math.abs(b - correct))
+        .slice(0, 3);
+      return shuffle([correct, ...distractors]).map(b => ({ beats: b, label: formatBeatLabel(b) }));
+    }
+
+    function getAllItems() {
+      return bars.flat();
+    }
+
+    function getBarItems(barIdx) {
+      return bars[barIdx] || [];
+    }
+
+    function findNextUnsolved() {
+      if (isFreePlay) return null;
+      for (let b = 0; b < numBars; b++) {
+        const idx = getBarItems(b).findIndex(n => !n.solved);
+        if (idx !== -1) return { barIdx: b, itemIdx: idx };
+      }
+      return null;
+    }
+
+    function getBarUnitsUsed(barIdx) {
+      return getBarItems(barIdx).reduce((s, i) => s + getItemMeta(i).units, 0);
+    }
+
+    function getBarUnitsRemaining(barIdx) {
+      return unitsPerBar - getBarUnitsUsed(barIdx);
+    }
+
+    function beatHintText(item) {
+      const meta = getItemMeta(item);
+      const label = formatBeatLabel(meta.beats);
+      if (meta.beats === 1) return `${label} beat`;
+      if (meta.beats < 1) return `${label} of a beat`;
+      return `${label} beats`;
+    }
+
+    // --- DOM refs ---
+    const canvas = document.getElementById('staff-canvas');
+    const ctx = canvas.getContext('2d');
+    const noteCardsEl = document.getElementById('note-cards');
+    const barProgressBarsEl = document.getElementById('bar-progress-bars');
+    const beatsTextOverallEl = document.getElementById('beats-text-overall');
+    const equationTextEl = document.getElementById('equation-text');
+    const feedbackEl = document.getElementById('feedback');
+    const winBannerEl = document.getElementById('win-banner');
+    const btnPlay = document.getElementById('btn-play');
+    const audioStatusEl = document.getElementById('audio-status');
+    const screenUser = document.getElementById('screen-user');
+    const screenHome = document.getElementById('screen-home');
+    const screenLevels = document.getElementById('screen-levels');
+    const screenGame = document.getElementById('screen-game');
+    const screenResults = document.getElementById('screen-results');
+
+    const levelCardsGrid = document.getElementById('level-cards-grid');
+    const barNavSection = document.getElementById('bar-nav-section');
+    const barNavGroup = document.getElementById('bar-nav-group');
+    const gameLevelBadge = document.getElementById('game-level-badge');
+    const gameLevelDesc = document.getElementById('game-level-desc');
+    const winBannerText = document.getElementById('win-banner-text');
+
+    const SEGMENT_COLORS = [
+      '#f472b6', '#fb923c', '#facc15', '#4ade80',
+      '#38bdf8', '#a78bfa', '#f87171', '#2dd4bf',
+      '#e879f9', '#fbbf24', '#34d399', '#60a5fa',
+      '#c084fc', '#fb7185', '#14b8a6', '#818cf8',
+    ];
+
+    // --- Exercise generator ---
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function maxConsecutive(types, matcher) {
+      let max = 0, run = 0;
+      for (const t of types) {
+        if (matcher(t)) { run++; max = Math.max(max, run); }
+        else run = 0;
+      }
+      return max;
+    }
+
+    function isNiceRhythm(types) {
+      if (maxConsecutive(types, t => t === 'semiquaver') > MAX_CONSECUTIVE_SEMIQUAVERS) return false;
+      if (maxConsecutive(types, t => t === 'quaver' || t === 'dotted_quaver') > MAX_CONSECUTIVE_QUAVERS) return false;
+      return true;
+    }
+
+    function makeItem(kind, type) {
+      return { kind, type, solved: false, answer: null };
+    }
+
+    function getNoteCountRange(units) {
+      const level = getCurrentLevel();
+      if (level.id === 1) return { min: 4, max: 4 };
+      if (level.hardMode) return { min: 5, max: MAX_NOTES };
+      if (level.id === 3) return { min: 4, max: 7 };
+      if (units <= 8) return { min: 2, max: 5 };
+      if (units <= 12) return { min: 3, max: 6 };
+      return { min: MIN_NOTES, max: MAX_NOTES };
+    }
+
+    function countType(types, type) {
+      return types.filter(t => t === type).length;
+    }
+
+    function levelRhythmIsValid(types, items) {
+      if (!isNiceRhythm(types)) return false;
+      const level = getCurrentLevel();
+
+      if (level.quaverMin !== undefined) {
+        const q = countType(types, 'quaver');
+        if (level.quaverMax !== undefined) {
+          if (q < level.quaverMin || q > level.quaverMax) return false;
+        } else if (q < level.quaverMin) return false;
+      }
+      if (level.minSemiquavers && countType(types, 'semiquaver') < level.minSemiquavers) return false;
+      if (level.minDotted) {
+        const dotted = types.filter(t => t.startsWith('dotted')).length;
+        if (dotted < level.minDotted) return false;
+      }
+      if (level.hardMode) {
+        if (new Set(types).size < 3) return false;
+        if (items && !items.some(i => i.kind === 'rest')) return false;
+        if (!types.some(t => t.startsWith('dotted'))) return false;
+        if (!types.includes('semiquaver')) return false;
+      }
+      return true;
+    }
+
+    /** Randomly assign rhythm types that sum exactly to `units` (in sixteenths). */
+    function assignNoteTypes(count, units) {
+      const validUnits = getValidUnits(units);
+      const types = [];
+      let remaining = units;
+
+      for (let i = 0; i < count; i++) {
+        const notesLeft = count - i - 1;
+        const minNeeded = notesLeft;
+        const choices = validUnits.filter(v =>
+          v <= remaining - minNeeded && remaining - v >= notesLeft
+        );
+        if (choices.length === 0) return null;
+
+        const val = choices[randomInt(0, choices.length - 1)];
+        types.push(UNIT_TO_TYPE[val]);
+        remaining -= val;
+      }
+
+      return remaining === 0 ? types : null;
+    }
+
+    /** Build rhythm with a target quaver count (levels 2–3). */
+    function generateWithQuaverTarget(units) {
+      const level = getCurrentLevel();
+      const targetQ = level.quaverMax !== undefined
+        ? randomInt(level.quaverMin, level.quaverMax)
+        : level.quaverMin;
+      const quaverUnits = targetQ * 2;
+      const remaining = units - quaverUnits;
+      if (remaining < 0) return null;
+
+      if (remaining % 4 === 0) {
+        const types = [
+          ...Array(targetQ).fill('quaver'),
+          ...Array(remaining / 4).fill('crotchet'),
+        ];
+        shuffle(types);
+        if (isNiceRhythm(types) && levelRhythmIsValid(types)) return types;
+      }
+
+      for (let attempt = 0; attempt < 40; attempt++) {
+        const remCount = randomInt(1, Math.min(6, remaining));
+        const remTypes = assignNoteTypes(remCount, remaining);
+        if (!remTypes) continue;
+        const types = [...Array(targetQ).fill('quaver'), ...remTypes];
+        shuffle(types);
+        if (isNiceRhythm(types) && levelRhythmIsValid(types)) return types;
+      }
+      return null;
+    }
+
+    /** Ensure at least N semiquavers by splitting notes (levels 4, 9). */
+    function injectSemiquavers(types, minSq) {
+      const result = [...types];
+      let sq = countType(result, 'semiquaver');
+      while (sq < minSq) {
+        const cIdx = result.indexOf('crotchet');
+        if (cIdx !== -1) {
+          result.splice(cIdx, 1, 'semiquaver', 'semiquaver', 'semiquaver', 'semiquaver');
+          sq += 4;
+          continue;
+        }
+        const qIdx = result.indexOf('quaver');
+        if (qIdx !== -1) {
+          result.splice(qIdx, 1, 'semiquaver', 'semiquaver');
+          sq += 2;
+          continue;
+        }
+        break;
+      }
+      const sum = result.reduce((s, t) => s + TYPE_TO_UNIT[t], 0);
+      return sum === types.reduce((s, t) => s + TYPE_TO_UNIT[t], 0) && sq >= minSq ? result : null;
+    }
+
+    function generateNotes(units) {
+      const level = getCurrentLevel();
+
+      if (level.quaverMin !== undefined && !level.minSemiquavers) {
+        for (let attempt = 0; attempt < 50; attempt++) {
+          const types = generateWithQuaverTarget(units);
+          if (types && levelRhythmIsValid(types)) {
+            return types.map(type => makeItem('note', type));
+          }
+        }
+      }
+
+      const { min, max } = getNoteCountRange(units);
+
+      for (let attempt = 0; attempt < 120; attempt++) {
+        const count = randomInt(min, max);
+        if (count > units || units > count * 16) continue;
+
+        let types = assignNoteTypes(count, units);
+        if (!types) continue;
+
+        if (level.minSemiquavers) {
+          types = injectSemiquavers(types, level.minSemiquavers);
+          if (!types) continue;
+        }
+
+        shuffle(types);
+        if (!levelRhythmIsValid(types)) continue;
+
+        return types.map(type => makeItem('note', type));
+      }
+
+      return buildFallbackNotes(units);
+    }
+
+    /** Assign note vs rest for each duration slot (rests mode only). */
+    function assignKindsToTypes(types) {
+      const level = getCurrentLevel();
+      const count = types.length;
+      let restCount;
+      if (level.restCountMin !== undefined) {
+        const maxR = level.restCountMax ?? Math.floor(count / 2);
+        restCount = randomInt(level.restCountMin, Math.min(maxR, count - 1));
+      } else {
+        restCount = randomInt(1, Math.max(1, Math.floor(count / 2)));
+      }
+      const restIndices = new Set(shuffle([...Array(count).keys()]).slice(0, restCount));
+      return types.map((type, i) => makeItem(restIndices.has(i) ? 'rest' : 'note', type));
+    }
+
+    function generateWithRests(units) {
+      const { min, max } = getNoteCountRange(units);
+
+      for (let attempt = 0; attempt < 80; attempt++) {
+        const count = randomInt(min, max);
+        if (count > units || units > count * 16) continue;
+
+        const types = assignNoteTypes(count, units);
+        if (!types) continue;
+
+        shuffle(types);
+        const items = assignKindsToTypes(types);
+        if (!levelRhythmIsValid(types, items)) continue;
+
+        const hasNote = items.some(i => i.kind === 'note');
+        const hasRest = items.some(i => i.kind === 'rest');
+        if (!hasNote || !hasRest) continue;
+
+        return items;
+      }
+
+      return buildFallbackRhythm(units);
+    }
+
+    function generateSingleBar(units) {
+      const level = getCurrentLevel();
+      if (!level.allowRests) return generateNotes(units);
+      return generateWithRests(units);
+    }
+
+    function generateRhythm() {
+      const result = [];
+      for (let b = 0; b < numBars; b++) {
+        result.push(generateSingleBar(unitsPerBar));
+      }
+      return result;
+    }
+
+    function filterTypesToLevel(types) {
+      const allowed = new Set(getCurrentLevel().allowedTypes);
+      return types.filter(t => allowed.has(t));
+    }
+
+    function buildFallbackNotes(units) {
+      const level = getCurrentLevel();
+      const allPatterns = {
+        8: [['crotchet', 'crotchet'], ['quaver', 'quaver', 'quaver', 'quaver']],
+        16: [
+          ['crotchet', 'crotchet', 'crotchet', 'crotchet'],
+          ['crotchet', 'crotchet', 'quaver', 'crotchet'],
+          ['crotchet', 'quaver', 'quaver', 'crotchet'],
+          ['quaver', 'quaver', 'crotchet', 'quaver', 'quaver'],
+          ['quaver', 'quaver', 'quaver', 'quaver', 'crotchet', 'crotchet'],
+          ['crotchet', 'quaver', 'semiquaver', 'semiquaver', 'quaver', 'crotchet'],
+          ['minim', 'minim'],
+          ['semibreve'],
+          ['dotted_crotchet', 'quaver', 'crotchet'],
+          ['crotchet', 'dotted_quaver', 'quaver', 'crotchet'],
+          ['crotchet', 'semiquaver', 'semiquaver', 'semiquaver', 'semiquaver', 'crotchet', 'quaver', 'quaver'],
+        ],
+      };
+      const patterns = (allPatterns[units] || allPatterns[16])
+        .map(p => filterTypesToLevel(p))
+        .filter(p => p.length > 0 && p.reduce((s, t) => s + TYPE_TO_UNIT[t], 0) === units);
+      if (!patterns.length) {
+        const u = getLevelAllowedUnits(units)[0] || 4;
+        const count = units / u;
+        return Array(count).fill(getCurrentLevel().allowedTypes[0]).map(t => makeItem('note', t));
+      }
+      const types = patterns[randomInt(0, patterns.length - 1)];
+      return types.map(type => makeItem('note', type));
+    }
+
+    function buildFallbackRhythm(units) {
+      const noteFallback = buildFallbackNotes(units);
+      if (!getCurrentLevel().allowRests) return noteFallback;
+      const items = noteFallback.map((item, i) =>
+        i === 1 ? makeItem('rest', item.type) : item
+      );
+      if (!items.some(i => i.kind === 'rest')) {
+        items[items.length - 1] = makeItem('rest', items[items.length - 1].type);
+      }
+      return items;
+    }
+
+    // --- Staff drawing ---
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawStaff();
+    }
+
+    function drawTrebleClef(x, staffTop, lineGap) {
+      ctx.save();
+      ctx.strokeStyle = '#1e293b';
+      ctx.fillStyle = '#1e293b';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+
+      const s = lineGap / 10;
+      const mid = staffTop + lineGap * 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 14 * s, staffTop - lineGap * 0.3);
+      ctx.bezierCurveTo(x + 6 * s, staffTop + lineGap * 0.9, x + 2 * s, mid, x + 8 * s, mid + lineGap * 1.1);
+      ctx.bezierCurveTo(x + 17 * s, mid + lineGap * 2.5, x + 22 * s, staffTop + lineGap * 3.4, x + 11 * s, staffTop + lineGap * 4.3);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.ellipse(x + 16 * s, staffTop + lineGap * 3.2, 4 * s, 3.2 * s, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    /** Group consecutive quavers/semiquavers for beaming within one bar. */
+    function getBeamGroups(barItems) {
+      const groups = [];
+      let current = null;
+
+      barItems.forEach((item, i) => {
+        const beamable = item.kind === 'note' && BEAMABLE_TYPES.has(item.type);
+        if (!beamable) {
+          if (current) { groups.push(current); current = null; }
+        } else {
+          if (!current) current = { start: i, end: i };
+          else current.end = i;
+        }
+      });
+      if (current) groups.push(current);
+
+      return groups;
+    }
+
+    function getBeamGroupForIndex(index, groups) {
+      return groups.find(g => index >= g.start && index <= g.end) || null;
+    }
+
+    function drawNoteHead(x, y, highlighted, options = {}) {
+      const { open = false, large = false } = options;
+      const headRx = large ? 9 : 7;
+      const headRy = large ? 7 : 5.5;
+      const color = highlighted ? '#4f46e5' : '#1e293b';
+
+      ctx.save();
+      if (highlighted) {
+        ctx.shadowColor = 'rgba(99, 102, 241, 0.6)';
+        ctx.shadowBlur = 10;
+      }
+      ctx.beginPath();
+      ctx.ellipse(x, y, headRx, headRy, -0.35, 0, Math.PI * 2);
+      if (open) {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+      ctx.restore();
+
+      return { headRx, headRy };
+    }
+
+    function drawDot(x, y, headRx, highlighted) {
+      ctx.save();
+      ctx.fillStyle = highlighted ? '#4f46e5' : '#1e293b';
+      ctx.beginPath();
+      ctx.arc(x + headRx + 5, y - 1, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawNoteSymbol(item, x, noteY, stemH, highlighted) {
+      const meta = NOTE_TYPES[item.type];
+      const isSemibreve = item.type === 'semibreve';
+      const isMinim = item.type === 'minim';
+      const isOpen = isSemibreve || isMinim;
+      const hasStem = !isSemibreve;
+      const hasFlag = item.type === 'quaver' || item.type === 'semiquaver' || item.type === 'dotted_quaver';
+
+      const { headRx, headRy } = drawNoteHead(x, noteY, highlighted, {
+        open: isOpen,
+        large: isSemibreve,
+      });
+
+      if (meta.dotted) drawDot(x, noteY, headRx, highlighted);
+
+      if (!hasStem) {
+        return { x, stemX: x + headRx, highlighted };
+      }
+
+      const stemTop = noteY - stemH;
+      const stemX = drawStem(x, noteY, headRx, stemTop, noteY + stemH, highlighted);
+      return { x, stemX, highlighted, stemTop, hasFlag, headRx };
+    }
+
+    function drawStem(x, y, headRx, stemTop, stemBottom, highlighted) {
+      ctx.save();
+      ctx.strokeStyle = highlighted ? '#4f46e5' : '#1e293b';
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x + headRx - 1, y - 2);
+      ctx.lineTo(x + headRx - 1, stemTop);
+      ctx.stroke();
+      ctx.restore();
+      return x + headRx - 1;
+    }
+
+    function drawFlag(stemX, stemTop, highlighted) {
+      ctx.save();
+      ctx.strokeStyle = highlighted ? '#4f46e5' : '#1e293b';
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(stemX, stemTop);
+      ctx.quadraticCurveTo(stemX + 12, stemTop + 8, stemX + 8, stemTop + 18);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawBeams(group, positions, noteY, stemH, highlighted, barItems) {
+      const first = positions[group.start];
+      const last = positions[group.end];
+      const beamY = noteY - stemH;
+      const beamGap = 5;
+
+      ctx.save();
+      ctx.strokeStyle = highlighted ? '#4f46e5' : '#1e293b';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+
+      // Primary beam connects the whole group
+      ctx.beginPath();
+      ctx.moveTo(first.stemX, beamY);
+      ctx.lineTo(last.stemX, beamY);
+      ctx.stroke();
+
+      // Secondary beam for runs of semiquavers within the group
+      if (barItems.slice(group.start, group.end + 1).some(n => n.type === 'semiquaver' && n.kind === 'note')) {
+        ctx.lineWidth = 2.5;
+        let i = group.start;
+        while (i <= group.end) {
+          if (barItems[i].type === 'semiquaver') {
+            let j = i;
+            while (j <= group.end && barItems[j].type === 'semiquaver') j++;
+            const sx = positions[i].stemX;
+            const ex = positions[j - 1].stemX;
+            ctx.beginPath();
+            ctx.moveTo(sx, beamY + beamGap);
+            ctx.lineTo(j - 1 === i ? sx + 8 : ex, beamY + beamGap);
+            ctx.stroke();
+            i = j;
+          } else {
+            i++;
+          }
+        }
+      }
+
+      ctx.restore();
+    }
+
+    /** Draw standard-style rest shapes (simplified for children). */
+    function drawRest(item, x, staffTop, lineGap, highlighted) {
+      const color = highlighted ? '#059669' : '#1e293b';
+      const s = lineGap / 10;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2.2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      if (highlighted) {
+        ctx.shadowColor = 'rgba(5, 150, 105, 0.5)';
+        ctx.shadowBlur = 8;
+      }
+
+      const midY = staffTop + lineGap * 2;
+      const staffBottom = staffTop + lineGap * 4;
+
+      if (item.type === 'semibreve') {
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x - 10 * s, staffBottom + 4 * s);
+        ctx.lineTo(x + 10 * s, staffBottom + 4 * s);
+        ctx.stroke();
+      } else if (item.type === 'minim') {
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x - 7 * s, midY);
+        ctx.lineTo(x + 7 * s, midY);
+        ctx.stroke();
+      } else if (item.type === 'crotchet' || item.type === 'dotted_crotchet') {
+        ctx.beginPath();
+        ctx.moveTo(x + 7 * s, midY - 10 * s);
+        ctx.lineTo(x - 2 * s, midY - 2 * s);
+        ctx.lineTo(x + 6 * s, midY + 2 * s);
+        ctx.lineTo(x - 4 * s, midY + 10 * s);
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
+        if (item.type === 'dotted_crotchet') {
+          ctx.beginPath();
+          ctx.arc(x + 9 * s, midY - 6 * s, 2 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (item.type === 'quaver' || item.type === 'dotted_quaver') {
+        ctx.beginPath();
+        ctx.moveTo(x - 4 * s, midY - 12 * s);
+        ctx.bezierCurveTo(x + 10 * s, midY - 10 * s, x + 8 * s, midY + 2 * s, x - 2 * s, midY + 10 * s);
+        ctx.stroke();
+        if (item.type === 'dotted_quaver') {
+          ctx.beginPath();
+          ctx.arc(x + 8 * s, midY - 8 * s, 2 * s, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(x - 3 * s, midY - 10 * s);
+        ctx.bezierCurveTo(x + 7 * s, midY - 8 * s, x + 6 * s, midY, x - 1 * s, midY + 8 * s);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x + 1 * s, midY - 6 * s);
+        ctx.quadraticCurveTo(x + 8 * s, midY - 4 * s, x + 5 * s, midY + 1 * s);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawBarContents(barIdx, barItems, measureStart, measureEnd, staffTop, lineGap, noteY, stemH, nextUnsolved, dimmed) {
+      const noteCount = barItems.length;
+      if (noteCount === 0) return;
+
+      const usable = measureEnd - measureStart - 20;
+      const spacing = usable / (noteCount + 1);
+      const beamGroups = getBeamGroups(barItems);
+      const positions = [];
+      const alpha = dimmed ? 0.38 : 1;
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      barItems.forEach((item, i) => {
+        const x = measureStart + 18 + spacing * (i + 1);
+        const highlighted = !won && nextUnsolved &&
+          nextUnsolved.barIdx === barIdx && nextUnsolved.itemIdx === i;
+
+        if (item.kind === 'rest') {
+          drawRest(item, x, staffTop, lineGap, highlighted);
+          positions[i] = { x, stemX: x, highlighted };
+          return;
+        }
+
+        const noteData = drawNoteSymbol(item, x, noteY, stemH, highlighted);
+        positions[i] = { x, stemX: noteData.stemX, highlighted };
+
+        const group = getBeamGroupForIndex(i, beamGroups);
+        const aloneBeamed = group && group.start === group.end;
+
+        if (aloneBeamed && noteData.hasFlag) {
+          drawFlag(noteData.stemX, noteData.stemTop, highlighted);
+          if (item.type === 'semiquaver') {
+            ctx.save();
+            ctx.strokeStyle = highlighted ? '#4f46e5' : '#1e293b';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.moveTo(noteData.stemX, noteData.stemTop + 5);
+            ctx.quadraticCurveTo(noteData.stemX + 10, noteData.stemTop + 12, noteData.stemX + 6, noteData.stemTop + 22);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+      });
+
+      beamGroups.forEach(group => {
+        if (group.end > group.start) {
+          const groupHighlighted = !won && nextUnsolved &&
+            nextUnsolved.barIdx === barIdx &&
+            group.start <= nextUnsolved.itemIdx && nextUnsolved.itemIdx <= group.end;
+          drawBeams(group, positions, noteY, stemH, groupHighlighted, barItems);
+        }
+      });
+
+      ctx.restore();
+    }
+
+    function drawStaff() {
+      const w = canvas.getBoundingClientRect().width;
+      const h = canvas.getBoundingClientRect().height;
+      ctx.clearRect(0, 0, w, h);
+
+      const paddingX = 12;
+      const lineGap = Math.min(10, Math.max(7, (h - 18) / 5.5));
+      const staffHeight = lineGap * 4;
+      const staffTop = (h - staffHeight) / 2 - 2;
+      const staffBottom = staffTop + staffHeight;
+      const clefArea = 54;
+      const barsWidth = w - paddingX * 2 - clefArea;
+      const barWidth = barsWidth / numBars;
+
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 5; i++) {
+        const y = staffTop + i * lineGap;
+        ctx.beginPath();
+        ctx.moveTo(paddingX, y);
+        ctx.lineTo(w - paddingX, y);
+        ctx.stroke();
+      }
+
+      drawTrebleClef(paddingX + 2, staffTop, lineGap);
+      const sigX = paddingX + 38;
+      ctx.fillStyle = '#1e293b';
+      ctx.font = `bold ${lineGap * 2}px Georgia, serif`;
+      ctx.textAlign = 'left';
+      ctx.fillText(timeSignature.split('/')[0], sigX, staffTop + lineGap * 1.5);
+      ctx.fillText(timeSignature.split('/')[1], sigX, staffTop + lineGap * 3.5);
+
+      const noteY = staffTop + lineGap * 2;
+      const stemH = Math.min(26, lineGap * 3);
+      const nextUnsolved = findNextUnsolved();
+
+      for (let b = 0; b < numBars; b++) {
+        const measureStart = paddingX + clefArea + b * barWidth;
+        const measureEnd = measureStart + barWidth;
+        const dimmed = barView !== 'all' && barView !== b;
+
+        if (barView === b) {
+          ctx.fillStyle = 'rgba(99, 102, 241, 0.07)';
+          ctx.fillRect(measureStart - 2, staffTop - 10, barWidth + 2, staffHeight + 20);
+        }
+
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(measureStart, staffTop - 8);
+        ctx.lineTo(measureStart, staffBottom + 8);
+        if (b === numBars - 1) {
+          ctx.moveTo(measureEnd, staffTop - 8);
+          ctx.lineTo(measureEnd, staffBottom + 8);
+        }
+        ctx.stroke();
+
+        ctx.fillStyle = dimmed ? '#94a3b8' : '#6366f1';
+        ctx.font = '700 10px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Bar ${b + 1}`, (measureStart + measureEnd) / 2, staffTop - 12);
+
+        drawBarContents(b, getBarItems(b), measureStart, measureEnd, staffTop, lineGap, noteY, stemH, nextUnsolved, dimmed);
+      }
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '600 10px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      const barLabel = numBars === 1 ? 'the bar' : 'both bars';
+      const prompt = rhythmMode === 'rests'
+        ? `Fill ${barLabel} — how many beats is each note or rest?`
+        : `Fill ${barLabel} — how many beats is each note?`;
+      ctx.fillText(prompt, w / 2, h - 3);
+    }
+
+    // --- Segment bar UI (one 16-segment bar per musical bar) ---
+    function buildSegmentBars() {
+      barProgressBarsEl.innerHTML = '';
+      segmentFillsPerBar = [];
+      filledUnitsPerBar = Array(numBars).fill(0);
+
+      for (let b = 0; b < numBars; b++) {
+        segmentFillsPerBar[b] = Array(MAX_SEGMENTS).fill(null);
+        const wrapper = document.createElement('div');
+        wrapper.className = getProgressBarWrapperClass(b);
+        wrapper.dataset.bar = b;
+        wrapper.innerHTML = `
+          <p class="bar-progress-label ${getProgressBarLabelClass(b)}">Bar ${b + 1}</p>
+          <span class="bar-focus-badge ${barView === b ? '' : 'hidden'} inline-block w-full text-center text-[10px] font-extrabold uppercase tracking-wide text-indigo-800 bg-indigo-200 px-2 py-0.5 rounded-full mb-1">Working on this bar</span>
+          <div class="segment-bar flex gap-0.5 h-7 sm:h-8 rounded-lg overflow-hidden bg-slate-100 border border-slate-200 p-0.5" data-bar="${b}"></div>
+          <p class="bar-beats-text text-[11px] sm:text-xs text-center font-semibold text-slate-600 mt-1" data-bar="${b}">
+            0 / ${formatBeatLabel(targetBeatsPerBar)} beats
+          </p>
+        `;
+        barProgressBarsEl.appendChild(wrapper);
+
+        const segBar = wrapper.querySelector('.segment-bar');
+        for (let i = 0; i < MAX_SEGMENTS; i++) {
+          const seg = document.createElement('div');
+          seg.className = 'segment flex-1 rounded-sm transition-colors duration-300';
+          const isActive = i < unitsPerBar;
+          seg.style.background = isActive ? '#e2e8f0' : '#f1f5f9';
+          seg.style.opacity = isActive ? '1' : '0.35';
+          if (!isActive) seg.style.border = '1px dashed #cbd5e1';
+          segBar.appendChild(seg);
+        }
+      }
+    }
+
+    function fillSegments(barIdx, unitsToAdd, colorIndex) {
+      const start = filledUnitsPerBar[barIdx];
+      const segBar = barProgressBarsEl.querySelector(`.segment-bar[data-bar="${barIdx}"]`);
+      for (let i = start; i < start + unitsToAdd && i < MAX_SEGMENTS; i++) {
+        segmentFillsPerBar[barIdx][i] = SEGMENT_COLORS[colorIndex % SEGMENT_COLORS.length];
+        const seg = segBar.children[i];
+        if (seg) {
+          seg.style.background = segmentFillsPerBar[barIdx][i];
+          seg.classList.add('segment-fill');
+          setTimeout(() => seg.classList.remove('segment-fill'), 400);
+        }
+      }
+      filledUnitsPerBar[barIdx] += unitsToAdd;
+      filledUnits += unitsToAdd;
+    }
+
+    // --- Equation formatting ---
+    function formatBeat(value) {
+      return formatBeatLabel(value);
+    }
+
+    function formatBeatTotal(units) {
+      return formatBeatLabel(units / 4);
+    }
+
+    function getVisibleItems() {
+      if (barView === 'all') return getAllItems();
+      return getBarItems(barView);
+    }
+
+    function buildEquation() {
+      const solved = getVisibleItems().filter(n => n.solved);
+      if (solved.length === 0) return 'Tap the buttons to add beats!';
+
+      const parts = solved.map(n => formatBeat(n.answer));
+      const sumUnits = solved.reduce((acc, n) => acc + getItemMeta(n).units, 0);
+      const prefix = barView !== 'all' && numBars > 1 ? `Bar ${barView + 1}: ` : '';
+      return prefix + parts.join(' + ') + ' = ' + formatBeatTotal(sumUnits);
+    }
+
+    function getProgressBarWrapperClass(barIdx) {
+      const base = 'rounded-xl p-2.5 border-2 transition-all duration-300';
+      if (barView === barIdx) {
+        return `${base} bar-progress-active border-indigo-500 bg-indigo-100/80`;
+      }
+      if (barView !== 'all') {
+        return `${base} bar-progress-dimmed border-slate-200 bg-white/50`;
+      }
+      return `${base} border-amber-100 bg-white/60`;
+    }
+
+    function getProgressBarLabelClass(barIdx) {
+      if (barView === barIdx) return 'text-xs font-extrabold text-center mb-1 text-indigo-700';
+      if (barView !== 'all') return 'text-xs font-bold text-center mb-1 text-slate-400';
+      return 'text-xs font-bold text-center mb-1 text-amber-700';
+    }
+
+    function updateProgressUI() {
+      beatsTextOverallEl.textContent =
+        `Overall: ${formatBeatTotal(filledUnits)} / ${formatBeatLabel(totalTargetBeats)} beats`;
+
+      for (let b = 0; b < numBars; b++) {
+        const el = barProgressBarsEl.querySelector(`.bar-beats-text[data-bar="${b}"]`);
+        if (el) {
+          el.textContent = `${formatBeatTotal(filledUnitsPerBar[b])} / ${formatBeatLabel(targetBeatsPerBar)} beats`;
+        }
+        const wrapper = barProgressBarsEl.children[b];
+        if (wrapper) {
+          wrapper.className = getProgressBarWrapperClass(b);
+          const label = wrapper.querySelector('.bar-progress-label');
+          if (label) label.className = getProgressBarLabelClass(b);
+          const badge = wrapper.querySelector('.bar-focus-badge');
+          if (badge) badge.classList.toggle('hidden', barView !== b);
+        }
+      }
+
+      equationTextEl.textContent = buildEquation();
+    }
+
+    // --- Note cards ---
+    const BTN_COLORS = [
+      'border-sky-300 bg-sky-100 text-sky-700 hover:bg-sky-200',
+      'border-pink-300 bg-pink-100 text-pink-700 hover:bg-pink-200',
+      'border-violet-300 bg-violet-100 text-violet-700 hover:bg-violet-200',
+      'border-amber-300 bg-amber-100 text-amber-700 hover:bg-amber-200',
+    ];
+
+    function renderNoteCards() {
+      noteCardsEl.innerHTML = '';
+
+      const barsToShow = barView === 'all'
+        ? [...Array(numBars).keys()]
+        : [barView];
+
+      barsToShow.forEach(barIdx => {
+        const barItems = getBarItems(barIdx);
+        if (barItems.length === 0) return;
+
+        if (barView === 'all') {
+          const heading = document.createElement('p');
+          heading.className = 'w-full text-center text-xs font-bold text-indigo-500 uppercase tracking-wide';
+          heading.textContent = `Bar ${barIdx + 1}`;
+          noteCardsEl.appendChild(heading);
+        }
+
+        const rowEl = document.createElement('div');
+        rowEl.className = 'bar-card-row';
+
+        barItems.forEach((item, itemIdx) => {
+        const info = getItemMeta(item);
+        const isRest = item.kind === 'rest';
+        const beatOptions = getBeatOptionsForItem(item);
+        const card = document.createElement('div');
+        card.className = `note-card shrink-0 w-36 sm:w-40 lg:w-44 rounded-xl border-2 shadow-md p-2.5 flex flex-col items-center gap-1.5 ${item.solved ? 'locked' : ''} ${isRest ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-indigo-100'}`;
+        card.dataset.bar = barIdx;
+        card.dataset.index = itemIdx;
+
+        const kindBadge = isRest
+          ? '<span class="text-[10px] font-bold uppercase tracking-wide text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">Rest</span>'
+          : '<span class="text-[10px] font-bold uppercase tracking-wide text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded-full">Note</span>';
+        const question = isRest
+          ? 'How many beats is this rest worth?'
+          : 'How many beats is this note worth?';
+        const dotTip = info.dotted && info.dotExplain
+          ? `<p class="text-[10px] text-amber-600 text-center font-medium leading-tight px-1">${info.dotExplain}</p>`
+          : '';
+
+        card.innerHTML = `
+          ${kindBadge}
+          <span class="text-4xl leading-none ${isRest ? 'text-emerald-700' : ''}" aria-hidden="true">${info.symbol}${info.dotted ? '<span class="text-2xl">·</span>' : ''}</span>
+          <span class="font-bold text-sm ${isRest ? 'text-emerald-700' : 'text-indigo-600'}">${info.label}</span>
+          ${dotTip}
+          <p class="text-xs text-slate-500 text-center font-medium leading-tight">${question}</p>
+          <div class="flex flex-wrap gap-1 w-full mt-0.5 justify-center">
+            ${beatOptions.map((opt, i) => `
+              <button class="btn-beat flex-1 min-w-[2.5rem] py-2 rounded-lg text-sm font-extrabold border-2 ${BTN_COLORS[i % BTN_COLORS.length]} active:scale-95 transition-all"
+                data-value="${opt.beats}" ${item.solved ? 'disabled' : ''}>${opt.label}</button>
+            `).join('')}
+          </div>
+        `;
+
+        if (item.solved) {
+          const correctVal = info.beats;
+          card.querySelectorAll('.btn-beat').forEach(btn => {
+            const val = parseFloat(btn.dataset.value);
+            if (val === correctVal) {
+              btn.className = 'btn-beat flex-1 min-w-[2.5rem] py-2 rounded-lg text-sm font-extrabold border-2 border-green-400 bg-green-400 text-white';
+              btn.innerHTML = `${formatBeatLabel(val)} ✓`;
+            } else {
+              btn.style.display = 'none';
+            }
+          });
+        }
+
+        card.querySelectorAll('.btn-beat').forEach(btn => {
+          btn.addEventListener('click', () => handleAnswer(barIdx, itemIdx, parseFloat(btn.dataset.value), card));
+        });
+
+        rowEl.appendChild(card);
+        });
+
+        noteCardsEl.appendChild(rowEl);
+      });
+    }
+
+    // --- Answer handling ---
+    function showFeedback(msg, isError = true) {
+      feedbackEl.textContent = msg;
+      feedbackEl.className = `text-center text-sm font-semibold min-h-[1.25rem] transition-opacity ${isError ? 'text-rose-500' : 'text-green-600'}`;
+      if (isError) {
+        clearTimeout(showFeedback._timer);
+        showFeedback._timer = setTimeout(() => { feedbackEl.textContent = ''; }, 4500);
+      }
+    }
+
+    function wrongAnswerMessage(item) {
+      const meta = getItemMeta(item);
+      const name = meta.label.toLowerCase();
+      let msg = `Not quite! A ${name} is worth ${beatHintText(item)}. Try another button!`;
+      if (meta.dotExplain) msg = `Not quite! ${meta.dotExplain} Try another button!`;
+      return msg;
+    }
+
+    function handleAnswer(barIdx, itemIdx, chosen, cardEl) {
+      ensureBeatsAudio();
+      const item = getBarItems(barIdx)[itemIdx];
+      if (won || !item || item.solved) return;
+
+      const meta = getItemMeta(item);
+      const correct = meta.beats;
+
+      if (chosen === correct) {
+        item.solved = true;
+        item.answer = chosen;
+        fillSegments(barIdx, meta.units, barIdx * 20 + itemIdx);
+        updateProgressUI();
+        renderNoteCards();
+        drawStaff();
+        const barDone = filledUnitsPerBar[barIdx] === unitsPerBar;
+        showFeedback(barDone && barIdx < numBars - 1
+          ? `Bar ${barIdx + 1} complete! Now try Bar ${barIdx + 2}!`
+          : 'Nice one! Keep going!', false);
+        playSingleItem(item);
+        checkWin();
+      } else {
+        sessionWrong++;
+        cardEl.classList.remove('shake');
+        void cardEl.offsetWidth;
+        cardEl.classList.add('shake');
+        showFeedback(wrongAnswerMessage(item));
+      }
+    }
+
+    function calculateStars() {
+      const elapsed = (Date.now() - levelStartTime) / 1000;
+      const itemCount = getAllItems().length;
+      const fastEnough = elapsed < itemCount * 18 + 30;
+
+      if (sessionWrong === 0 && sessionHints === 0 && fastEnough) return 3;
+      if (sessionWrong <= 2 && sessionHints <= 1) return 2;
+      return 1;
+    }
+
+    function checkWin() {
+      if (isFreePlay) return;
+      if (getAllItems().every(n => n.solved) && filledUnits === totalTargetUnits) {
+        won = true;
+        completedRhythmSnapshot = JSON.parse(JSON.stringify(bars));
+        const prevBest = getLevelStars(currentLevelId);
+        lastEarnedStars = calculateStars();
+        saveLevelStars(currentLevelId, lastEarnedStars);
+
+        const level = getCurrentLevel();
+        winBannerText.textContent = numBars === 1
+          ? 'You filled the bar perfectly!'
+          : 'You filled both bars perfectly!';
+        winBannerEl.classList.remove('hidden');
+        btnPlay.classList.add('play-win', 'ring-4', 'ring-green-400', 'scale-105');
+        fireConfetti();
+
+        setTimeout(() => showResultsScreen(lastEarnedStars, prevBest), 1200);
+      }
+    }
+
+    function fireConfetti() {
+      const duration = 2500;
+      const end = Date.now() + duration;
+      (function frame() {
+        confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#6366f1', '#f472b6', '#facc15', '#4ade80'] });
+        confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#6366f1', '#f472b6', '#facc15', '#4ade80'] });
+        if (Date.now() < end) requestAnimationFrame(frame);
+      })();
+      setTimeout(() => {
+        confetti({ particleCount: 120, spread: 90, origin: { y: 0.65 } });
+      }, 200);
+    }
+
+    // --- Hint ---
+    function giveHint() {
+      if (isFreePlay) return;
+      sessionHints++;
+      const next = findNextUnsolved();
+      if (!next) {
+        showFeedback('You solved them all!', false);
+        return;
+      }
+      const item = getBarItems(next.barIdx)[next.itemIdx];
+      const info = getItemMeta(item);
+      const dottedExtra = info.dotExplain ? ` ${info.dotExplain}` : '';
+      showFeedback(
+        `Hint (Bar ${next.barIdx + 1}): A ${info.label.toLowerCase()} is worth ${beatHintText(item)}!${dottedExtra}`,
+        false
+      );
+      if (barView !== next.barIdx) {
+        barView = next.barIdx;
+        updateBarNavButtons();
+        renderNoteCards();
+        updateProgressUI();
+      }
+      drawStaff();
+    }
+
+    // --- Audio playback ---
+    // Notes are drawn on the middle staff line (B4 in treble clef: staffTop + 2 × lineGap).
+    const STAFF_LINE_PITCH_HZ = 493.88;
+
+    function getStaffNoteFrequency() {
+      return STAFF_LINE_PITCH_HZ;
+    }
+
+    let audioCtx = null;
+    let masterGain = null;
+    let isPlaying = false;
+    let audioReady = false;
+
+    function updateAudioStatusUI() {
+      if (!audioStatusEl) return;
+      if (audioCtx && audioCtx.state === 'running') {
+        audioStatusEl.textContent = 'Audio ready';
+        audioStatusEl.className = 'text-center text-xs font-semibold min-h-[1.1rem] text-emerald-600';
+      } else if (audioCtx && audioCtx.state === 'suspended') {
+        audioStatusEl.textContent = 'Tap Play or an answer to enable sound';
+        audioStatusEl.className = 'text-center text-xs font-semibold min-h-[1.1rem] text-amber-600';
+      } else {
+        audioStatusEl.textContent = 'Tap Play to enable sound';
+        audioStatusEl.className = 'text-center text-xs font-semibold min-h-[1.1rem] text-amber-600';
+      }
+    }
+
+    function playSilentUnlockPulse(ac) {
+      const buffer = ac.createBuffer(1, 1, ac.sampleRate);
+      const source = ac.createBufferSource();
+      source.buffer = buffer;
+      source.connect(masterGain || ac.destination);
+      const t = ac.currentTime;
+      source.start(t);
+      source.stop(t + 0.001);
+    }
+
+    // Must run synchronously inside the user's tap/click handler (iOS Safari requirement).
+    function ensureBeatsAudio() {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return false;
+
+      if (!audioCtx || audioCtx.state === 'closed') {
+        audioCtx = new AudioCtx();
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 0.9;
+        masterGain.connect(audioCtx.destination);
+      }
+
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+
+      try {
+        playSilentUnlockPulse(audioCtx);
+      } catch (_) {}
+
+      audioReady = audioCtx.state !== 'closed';
+      updateAudioStatusUI();
+      return audioReady;
+    }
+
+    function unlockAudio() {
+      return Promise.resolve(ensureBeatsAudio());
+    }
+
+    function playTone(ac, frequency, start, duration, options = {}) {
+      const { preview = false } = options;
+      const slot = Math.max(duration, preview ? 0.04 : 0.18);
+      const isShort = slot < 0.28;
+      const attack = isShort ? 0.004 : Math.min(0.01, slot * 0.08);
+      const release = isShort
+        ? Math.max(0.06, slot * 0.42)
+        : Math.min(0.1, Math.max(0.04, slot * 0.22));
+      const attackEnd = start + attack;
+      const releaseStart = Math.max(attackEnd + 0.015, start + slot - release);
+      const end = start + slot;
+      const peak = preview ? 0.001 : (isShort ? 0.62 : 0.5);
+      const floor = 0.0001;
+
+      const osc = ac.createOscillator();
+      const filter = ac.createBiquadFilter();
+      const gain = ac.createGain();
+
+      osc.type = isShort ? 'sine' : 'triangle';
+      osc.frequency.setValueAtTime(frequency, start);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(isShort ? 2800 : 2200, start);
+      filter.Q.value = 0.7;
+
+      gain.gain.setValueAtTime(floor, start);
+      gain.gain.exponentialRampToValueAtTime(Math.max(peak, floor * 2), attackEnd);
+      gain.gain.setValueAtTime(peak, releaseStart);
+      gain.gain.exponentialRampToValueAtTime(floor, end);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(masterGain || ac.destination);
+
+      osc.start(start);
+      osc.stop(end + 0.05);
+    }
+
+    function playSingleItem(item) {
+      if (item.kind !== 'note') return;
+      if (!ensureBeatsAudio() || !audioCtx) return;
+
+      const ac = audioCtx;
+      const tempo = 100;
+      const beatDur = 60 / tempo;
+      const beatLength = getItemMeta(item).beats * beatDur;
+      const staffPitch = getStaffNoteFrequency();
+      const time = ac.currentTime + 0.05;
+      const toneDur = Math.max(beatLength * 0.94, beatLength < 0.22 ? 0.2 : 0.14);
+      playTone(ac, staffPitch, time, toneDur);
+    }
+
+    function playRhythm(rhythmBars = null) {
+      const playBars = rhythmBars || bars;
+      const items = playBars.flat();
+      if (!items.length || isPlaying) return;
+
+      if (!ensureBeatsAudio() || !audioCtx) {
+        audioStatusEl.textContent = 'Sound is still blocked — tap Play again or check browser mute settings';
+        audioStatusEl.className = 'text-center text-xs font-semibold min-h-[1.1rem] text-rose-500';
+        showFeedback('Could not start sound — tap Play again to unlock audio.', true);
+        return;
+      }
+
+      isPlaying = true;
+      btnPlay.disabled = true;
+
+      try {
+        const ac = audioCtx;
+        const tempo = 100;
+        const beatDur = 60 / tempo;
+        const staffPitch = getStaffNoteFrequency();
+        const leadTime = 0.12;
+        let time = ac.currentTime + leadTime;
+
+        const barCount = playBars.length;
+        for (let b = 0; b < barCount; b++) {
+          (playBars[b] || []).forEach((item) => {
+            const beatLength = getItemMeta(item).beats * beatDur;
+            if (item.kind === 'note') {
+              const toneDur = Math.max(beatLength * 0.94, beatLength < 0.22 ? 0.2 : 0.14);
+              playTone(ac, staffPitch, time, toneDur);
+            }
+            time += beatLength;
+          });
+        }
+
+        const totalMs = Math.max((time - ac.currentTime) * 1000 + 300, 400);
+        setTimeout(() => {
+          isPlaying = false;
+          btnPlay.disabled = false;
+        }, totalMs);
+      } catch (err) {
+        console.error('Play rhythm failed:', err);
+        isPlaying = false;
+        btnPlay.disabled = false;
+        audioReady = false;
+        updateAudioStatusUI();
+        showFeedback('Could not play sound — tap Play again!', true);
+      }
+    }
+
+    // --- Multi-user progress persistence ---
+    function defaultAppData() {
+      return {
+        currentUser: 'christian',
+        users: { christian: { stars: {} }, mum: { stars: {} }, dad: { stars: {} } },
+      };
+    }
+
+    function migrateLegacyProgress(data) {
+      try {
+        const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+        if (legacy) {
+          const old = JSON.parse(legacy);
+          if (old.stars && Object.keys(old.stars).length) {
+            data.users.christian.stars = { ...data.users.christian.stars, ...old.stars };
+          }
+          localStorage.removeItem(LEGACY_STORAGE_KEY);
+        }
+      } catch {}
+      return data;
+    }
+
+    function loadAppData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        let data = raw ? JSON.parse(raw) : defaultAppData();
+        if (!data.users) data = migrateLegacyProgress(defaultAppData());
+        else data = migrateLegacyProgress(data);
+        USERS.forEach(u => { if (!data.users[u.id]) data.users[u.id] = { stars: {} }; });
+        return data;
+      } catch { return defaultAppData(); }
+    }
+
+    function saveAppData(data) {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+    }
+
+    function getUserStars() {
+      const data = loadAppData();
+      return data.users[currentUserId]?.stars || {};
+    }
+
+    function getLevelStars(levelId) {
+      return getUserStars()[levelId] || 0;
+    }
+
+    function saveLevelStars(levelId, stars) {
+      const data = loadAppData();
+      const userData = data.users[currentUserId];
+      userData.stars[levelId] = Math.max(userData.stars[levelId] || 0, stars);
+      saveAppData(data);
+    }
+
+    function getTotalStars() {
+      const stars = getUserStars();
+      return LEVELS.reduce((sum, l) => sum + (stars[l.id] || 0), 0);
+    }
+
+    function setCurrentUser(userId) {
+      currentUserId = userId;
+      const data = loadAppData();
+      data.currentUser = userId;
+      saveAppData(data);
+      renderAllUserSwitchers();
+      updateHomeScreen();
+    }
+
+    function renderUserSelectScreen() {
+      const grid = document.getElementById('user-select-grid');
+      grid.innerHTML = '';
+      USERS.forEach(user => {
+        const stars = loadAppData().users[user.id]?.stars || {};
+        const total = LEVELS.reduce((s, l) => s + (stars[l.id] || 0), 0);
+        const btn = document.createElement('button');
+        btn.className = 'flex-1 rounded-2xl border-2 border-indigo-200 bg-white/90 p-6 shadow-lg hover:border-indigo-400 active:scale-95 transition-all text-center';
+        btn.innerHTML = `
+          <span class="text-5xl">${user.emoji}</span>
+          <p class="mt-3 text-xl font-extrabold text-indigo-700">${user.name}</p>
+          <p class="mt-1 text-sm text-amber-600 font-bold">${total} stars earned</p>
+        `;
+        btn.addEventListener('click', () => {
+          setCurrentUser(user.id);
+          updateHomeScreen();
+          showScreen('home');
+        });
+        grid.appendChild(btn);
+      });
+    }
+
+    function renderUserSwitcher(containerId, compact = false) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      el.innerHTML = '';
+      USERS.forEach(user => {
+        const btn = document.createElement('button');
+        const active = user.id === currentUserId;
+        btn.className = compact
+          ? `px-2.5 py-1 rounded-full text-xs font-bold border-2 transition-all active:scale-95 ${active ? 'user-btn-active border-indigo-500 bg-indigo-100 text-indigo-700' : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-200'}`
+          : `px-4 py-2 rounded-xl text-sm font-extrabold border-2 transition-all active:scale-95 ${active ? 'user-btn-active border-indigo-500 bg-indigo-100 text-indigo-700' : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-200'}`;
+        btn.textContent = `${user.emoji} ${user.name}`;
+        btn.addEventListener('click', () => {
+          if (user.id !== currentUserId) {
+            setCurrentUser(user.id);
+            if (!document.getElementById('screen-levels').classList.contains('hidden')) renderLevelCards();
+          }
+        });
+        el.appendChild(btn);
+      });
+    }
+
+    function renderGamePlayerLabel() {
+      const el = document.getElementById('game-player-label');
+      if (!el) return;
+      const user = getCurrentUser();
+      el.textContent = `Playing as ${user.emoji} ${user.name}`;
+    }
+
+    function renderAllUserSwitchers() {
+      renderUserSwitcher('user-switcher-home');
+      renderUserSwitcher('user-switcher-levels');
+      renderGamePlayerLabel();
+    }
+
+    function getContinueLevelId() {
+      for (const level of LEVELS) {
+        if (getLevelStars(level.id) === 0) return level.id;
+      }
+      for (const level of LEVELS) {
+        if (getLevelStars(level.id) < 3) return level.id;
+      }
+      return LEVELS[LEVELS.length - 1].id;
+    }
+
+    function renderStarsHTML(count, size = 'text-lg') {
+      return [1, 2, 3].map(i =>
+        `<span class="${size} ${i <= count ? 'text-amber-400' : 'text-slate-300'}">★</span>`
+      ).join('');
+    }
+
+    // --- Screen navigation ---
+    function showScreen(name) {
+      screenUser.classList.toggle('hidden', name !== 'user');
+      screenHome.classList.toggle('hidden', name !== 'home');
+      screenLevels.classList.toggle('hidden', name !== 'levels');
+      screenGame.classList.toggle('hidden', name !== 'game');
+      screenResults.classList.toggle('hidden', name !== 'results');
+    }
+
+    function updateHomeScreen() {
+      const user = getCurrentUser();
+      const total = getTotalStars();
+      const max = LEVELS.length * 3;
+      document.getElementById('home-greeting').textContent =
+        `Hi ${user.name}! Learn rhythms one level at a time.`;
+      document.getElementById('home-total-stars').textContent =
+        total > 0 ? `${user.name} has ${total} of ${max} stars!` : `${user.name}, start your rhythm journey!`;
+      const nextId = getContinueLevelId();
+      const nextLevel = LEVELS.find(l => l.id === nextId);
+      document.getElementById('continue-label').textContent =
+        nextLevel ? `Up next: Level ${nextId} — ${nextLevel.name}` : '';
+    }
+
+    function renderLevelCards() {
+      levelCardsGrid.innerHTML = '';
+      LEVELS.forEach(level => {
+        const stars = getLevelStars(level.id);
+        const card = document.createElement('button');
+        card.className = 'level-card text-left rounded-2xl border-2 border-indigo-100 bg-white/90 p-4 shadow-md active:scale-[0.98] transition-all';
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <span class="text-2xl">${level.emoji}</span>
+            <span class="text-xs font-extrabold text-indigo-400 uppercase">Level ${level.id}</span>
+          </div>
+          <h3 class="text-lg font-extrabold text-indigo-700">${level.name}</h3>
+          <div class="my-2">${renderStarsHTML(stars, 'text-xl')}</div>
+          <p class="text-xs text-slate-500 font-medium leading-snug">${level.description}</p>
+          <p class="mt-3 text-xs font-bold text-indigo-500">${level.numBars} bar${level.numBars > 1 ? 's' : ''} · ${level.beatsPerBar}/4${level.allowRests ? ' · rests' : ''}</p>
+        `;
+        card.addEventListener('click', () => startLevel(level.id));
+        levelCardsGrid.appendChild(card);
+      });
+      document.getElementById('levels-total-stars').textContent =
+        `${getCurrentUser().name}: ${getTotalStars()} / ${LEVELS.length * 3} stars`;
+    }
+
+    function showLevelsScreen() {
+      renderLevelCards();
+      showScreen('levels');
+    }
+
+    function showResultsScreen(stars, prevBest = 0) {
+      const level = getCurrentLevel();
+      document.getElementById('results-level-name').textContent =
+        `Level ${level.id}: ${level.name}`;
+      const messages = {
+        3: 'Amazing! Perfect accuracy and speedy work!',
+        2: 'Great job! Keep practising for 3 stars!',
+        1: 'You did it! Try again to earn more stars!',
+      };
+      document.getElementById('results-message').textContent = messages[stars] || messages[1];
+
+      const starsEl = document.getElementById('results-stars');
+      starsEl.innerHTML = [1, 2, 3].map((i, idx) => {
+        const filled = i <= stars;
+        const delay = idx > 0 ? ` star-pop-delay-${idx}` : '';
+        return `<span class="star-pop${delay} ${filled ? 'text-amber-400' : 'text-slate-200'}">★</span>`;
+      }).join('');
+
+      const elapsed = Math.round((Date.now() - levelStartTime) / 1000);
+      const improved = stars > prevBest ? ' (new best!)' : '';
+      document.getElementById('results-stats').textContent =
+        `Time: ${elapsed}s · Mistakes: ${sessionWrong} · Hints: ${sessionHints}${improved}`;
+
+      const nextLevel = LEVELS.find(l => l.id === level.id + 1);
+      const btnNext = document.getElementById('btn-results-next');
+      if (nextLevel) {
+        btnNext.textContent = `Next: Level ${nextLevel.id} — ${nextLevel.name} →`;
+        btnNext.classList.remove('hidden');
+      } else {
+        btnNext.textContent = 'You finished all levels! 🎉';
+        btnNext.classList.remove('hidden');
+      }
+
+      showScreen('results');
+      if (stars >= 2) fireConfetti();
+
+      setTimeout(() => {
+        const msgEl = document.getElementById('results-message');
+        if (msgEl) msgEl.textContent = 'Tap Play the Rhythm on the level screen to hear it again! 🎵';
+      }, 2000);
+    }
+
+    function buildBarNav() {
+      barNavGroup.innerHTML = '';
+      if (numBars < 2) {
+        barNavSection.classList.add('hidden');
+        barView = 0;
+        return;
+      }
+      barNavSection.classList.remove('hidden');
+      const views = [
+        { v: 'all', label: 'Whole rhythm' },
+        { v: '0', label: 'Bar 1' },
+        { v: '1', label: 'Bar 2' },
+      ];
+      views.forEach(({ v, label }) => {
+        const btn = document.createElement('button');
+        btn.dataset.barView = v;
+        btn.textContent = label;
+        btn.className = 'bar-nav-btn px-4 py-2 rounded-xl text-sm font-extrabold border-2 transition-all active:scale-95 shadow-sm whitespace-nowrap bg-white text-slate-600 border-slate-200 hover:border-indigo-300';
+        btn.addEventListener('click', () => {
+          barView = v === 'all' ? 'all' : parseInt(v, 10);
+          updateBarNavButtons();
+          if (isFreePlay) renderFreePlayUI();
+          else { updateProgressUI(); renderNoteCards(); drawStaff(); }
+        });
+        barNavGroup.appendChild(btn);
+      });
+      updateBarNavButtons();
+    }
+
+    function updateBarNavButtons() {
+      barNavGroup.querySelectorAll('.bar-nav-btn').forEach(btn => {
+        const view = btn.dataset.barView;
+        const active = String(barView) === view;
+        btn.className = active
+          ? 'bar-nav-btn px-4 py-2 rounded-xl text-sm font-extrabold border-2 transition-all active:scale-95 shadow-sm bg-indigo-500 text-white border-indigo-600 ring-2 ring-indigo-300 whitespace-nowrap'
+          : 'bar-nav-btn px-4 py-2 rounded-xl text-sm font-extrabold border-2 transition-all active:scale-95 shadow-sm bg-white text-slate-600 border-slate-200 hover:border-indigo-300 whitespace-nowrap';
+      });
+    }
+
+    function setGameUIMode(mode) {
+      const isLevel = mode === 'level';
+      document.getElementById('levelplay-section').classList.toggle('hidden', !isLevel);
+      document.getElementById('progress-section').classList.toggle('hidden', !isLevel);
+      document.getElementById('freeplay-section').classList.toggle('hidden', isLevel);
+      document.getElementById('btn-hint').classList.toggle('hidden', !isLevel);
+      document.getElementById('btn-new-footer').classList.toggle('hidden', !isLevel);
+      document.getElementById('btn-new-header').classList.toggle('hidden', !isLevel);
+      document.getElementById('btn-clear-freeplay').classList.toggle('hidden', isLevel);
+      document.getElementById('btn-levels-from-game').classList.toggle('hidden', !isLevel);
+      winBannerEl.classList.add('hidden');
+    }
+
+    function initEmptyBars() {
+      bars = Array.from({ length: numBars }, () => []);
+    }
+
+    function renderFreePlayBarFocus() {
+      const focusEl = document.getElementById('freeplay-bar-focus');
+      focusEl.innerHTML = '';
+      focusEl.classList.toggle('hidden', numBars < 2);
+      if (numBars < 2) return;
+
+      for (let b = 0; b < numBars; b++) {
+        const btn = document.createElement('button');
+        const isActive = freePlayBarFocus === b;
+        const rem = getBarUnitsRemaining(b);
+        btn.className = isActive
+          ? 'px-4 py-2 rounded-xl text-sm font-extrabold border-2 border-indigo-500 bg-indigo-500 text-white ring-2 ring-indigo-200 active:scale-95 transition-all'
+          : 'px-4 py-2 rounded-xl text-sm font-extrabold border-2 border-slate-200 bg-white text-slate-600 active:scale-95 transition-all';
+        btn.textContent = isActive
+          ? `Adding to Bar ${b + 1}${rem === 0 ? ' (full)' : ''}`
+          : `Bar ${b + 1}${rem === 0 ? ' (full)' : ''}`;
+        btn.addEventListener('click', () => {
+          freePlayBarFocus = b;
+          renderFreePlayUI();
+        });
+        focusEl.appendChild(btn);
+      }
+    }
+
+    function focusFirstBarWithSpace() {
+      for (let b = 0; b < numBars; b++) {
+        if (getBarUnitsRemaining(b) > 0) {
+          freePlayBarFocus = b;
+          return;
+        }
+      }
+    }
+
+    function renderFreePlayPalette() {
+      const palette = document.getElementById('freeplay-palette');
+      palette.innerHTML = '';
+      FREEPLAY_TYPES.forEach(({ kind, type }) => {
+        const meta = kind === 'rest' ? REST_TYPES[type] : NOTE_TYPES[type];
+        const units = meta.units;
+        const remaining = getBarUnitsRemaining(freePlayBarFocus);
+        const btn = document.createElement('button');
+        btn.className = `palette-btn px-2 py-2 rounded-xl border-2 text-center min-w-[4.5rem] active:scale-95 transition-all ${kind === 'rest' ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100' : 'border-indigo-200 bg-indigo-50 hover:bg-indigo-100'}`;
+        btn.disabled = units > remaining;
+        btn.innerHTML = `
+          <span class="text-2xl leading-none block">${meta.symbol}</span>
+          <span class="text-[10px] font-bold ${kind === 'rest' ? 'text-emerald-700' : 'text-indigo-700'}">${meta.label.replace(' Rest', '')}</span>
+        `;
+        btn.addEventListener('click', () => addFreePlayItem(freePlayBarFocus, kind, type));
+        palette.appendChild(btn);
+      });
+    }
+
+    function renderFreePlayUI() {
+      const parts = [];
+      for (let b = 0; b < numBars; b++) {
+        const used = getBarUnitsUsed(b);
+        const rem = unitsPerBar - used;
+        parts.push(`Bar ${b + 1}: ${formatBeatTotal(used)} / ${formatBeatLabel(targetBeatsPerBar)} beats${rem === 0 ? ' ✓' : ` (${formatBeatTotal(rem)} left)`}`);
+      }
+      document.getElementById('freeplay-status').textContent = parts.join('  ·  ');
+
+      document.querySelectorAll('.fp-bar-btn').forEach(btn => {
+        const n = parseInt(btn.dataset.bars, 10);
+        const active = n === numBars;
+        btn.className = active
+          ? 'fp-bar-btn px-4 py-2 rounded-xl text-sm font-extrabold border-2 border-indigo-500 bg-indigo-100 text-indigo-700 ring-2 ring-indigo-200 active:scale-95 transition-all'
+          : 'fp-bar-btn px-4 py-2 rounded-xl text-sm font-extrabold border-2 border-slate-200 bg-white text-slate-600 active:scale-95 transition-all';
+      });
+
+      const list = document.getElementById('freeplay-items-list');
+      list.innerHTML = '';
+      for (let b = 0; b < numBars; b++) {
+        const items = getBarItems(b);
+        if (!items.length) continue;
+        const heading = document.createElement('p');
+        heading.className = 'text-xs font-bold text-slate-500 uppercase text-center';
+        heading.textContent = numBars > 1 ? `Bar ${b + 1} — tap ✕ to remove` : 'Your rhythm — tap ✕ to remove';
+        list.appendChild(heading);
+
+        const row = document.createElement('div');
+        row.className = 'flex flex-wrap justify-center gap-2';
+        items.forEach((item, idx) => {
+          const meta = getItemMeta(item);
+          const chip = document.createElement('div');
+          chip.className = `flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-sm font-bold ${item.kind === 'rest' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-indigo-200 bg-indigo-50 text-indigo-700'}`;
+          chip.innerHTML = `<span>${meta.symbol}</span><span>${meta.label}</span>`;
+          const rm = document.createElement('button');
+          rm.className = 'ml-1 w-5 h-5 rounded-full bg-rose-100 text-rose-600 font-extrabold text-xs hover:bg-rose-200 active:scale-90';
+          rm.textContent = '✕';
+          rm.addEventListener('click', () => removeFreePlayItem(b, idx));
+          chip.appendChild(rm);
+          row.appendChild(chip);
+        });
+        list.appendChild(row);
+      }
+
+      renderFreePlayBarFocus();
+      renderFreePlayPalette();
+      drawStaff();
+    }
+
+    function addFreePlayItem(barIdx, kind, type) {
+      if (!bars[barIdx]) bars[barIdx] = [];
+      const units = getItemMeta({ kind, type }).units;
+      if (units > getBarUnitsRemaining(barIdx)) {
+        showFeedback(`Not enough room in Bar ${barIdx + 1}!`, true);
+        return;
+      }
+      bars[barIdx].push({ kind, type });
+      showFeedback(`Added ${getItemMeta({ kind, type }).label} to Bar ${barIdx + 1}!`, false);
+      if (numBars > 1 && getBarUnitsRemaining(barIdx) === 0 && barIdx < numBars - 1) {
+        freePlayBarFocus = barIdx + 1;
+      }
+      renderFreePlayUI();
+    }
+
+    function removeFreePlayItem(barIdx, itemIdx) {
+      getBarItems(barIdx).splice(itemIdx, 1);
+      renderFreePlayUI();
+    }
+
+    function clearFreePlay() {
+      initEmptyBars();
+      renderFreePlayUI();
+      showFeedback('Cleared!', false);
+    }
+
+    function setFreePlayNumBars(n) {
+      if (n === numBars) return;
+      const old = bars;
+      numBars = n;
+      bars = Array.from({ length: n }, (_, i) => old[i] ? [...old[i]] : []);
+      totalTargetBeats = targetBeatsPerBar * numBars;
+      freePlayBarFocus = Math.min(freePlayBarFocus, numBars - 1);
+      if (getBarUnitsRemaining(freePlayBarFocus) === 0) focusFirstBarWithSpace();
+      barView = n > 1 ? 'all' : 0;
+      buildBarNav();
+      renderFreePlayUI();
+      requestAnimationFrame(() => resizeCanvas());
+    }
+
+    function startFreePlay() {
+      isFreePlay = true;
+      currentLevelId = 0;
+      numBars = 1;
+      targetBeatsPerBar = 4;
+      unitsPerBar = 16;
+      totalTargetBeats = 4;
+      timeSignature = '4/4';
+      rhythmMode = 'rests';
+      freePlayBarFocus = 0;
+      barView = 0;
+
+      gameLevelBadge.textContent = '🎨 Free Play';
+      gameLevelDesc.textContent = 'Build any rhythm you like — add notes and rests, then play!';
+
+      setGameUIMode('freeplay');
+      renderGamePlayerLabel();
+      initEmptyBars();
+      buildBarNav();
+      showScreen('game');
+      renderFreePlayUI();
+      requestAnimationFrame(() => resizeCanvas());
+    }
+
+    function resetExercise() {
+      if (isFreePlay) { clearFreePlay(); return; }
+      bars = generateRhythm();
+      filledUnits = 0;
+      filledUnitsPerBar = Array(numBars).fill(0);
+      won = false;
+      barView = numBars > 1 ? 'all' : 0;
+      sessionWrong = 0;
+      sessionHints = 0;
+      levelStartTime = Date.now();
+
+      winBannerEl.classList.add('hidden');
+      feedbackEl.textContent = '';
+      btnPlay.classList.remove('play-win', 'ring-4', 'ring-green-400', 'scale-105');
+      btnPlay.disabled = false;
+
+      buildBarNav();
+      buildSegmentBars();
+      updateProgressUI();
+      renderNoteCards();
+      drawStaff();
+    }
+
+    function startLevel(levelId) {
+      isFreePlay = false;
+      currentLevelId = levelId;
+      const level = getCurrentLevel();
+      numBars = level.numBars;
+      targetBeatsPerBar = level.beatsPerBar;
+      unitsPerBar = level.beatsPerBar * 4;
+      totalTargetBeats = targetBeatsPerBar * numBars;
+      totalTargetUnits = unitsPerBar * numBars;
+      timeSignature = `${level.beatsPerBar}/4`;
+      rhythmMode = level.allowRests ? 'rests' : 'notes';
+
+      gameLevelBadge.textContent = `Level ${level.id}: ${level.name}`;
+      gameLevelDesc.textContent = level.description;
+
+      barProgressBarsEl.className = numBars === 1
+        ? 'grid grid-cols-1 gap-3 max-w-md mx-auto'
+        : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+
+      beatsTextOverallEl.classList.toggle('hidden', numBars === 1);
+      document.getElementById('progress-heading').textContent =
+        numBars === 1 ? 'Watch the bar fill up!' : 'Watch the bars fill up!';
+
+      setGameUIMode('level');
+      renderGamePlayerLabel();
+      showScreen('game');
+      resetExercise();
+      requestAnimationFrame(() => resizeCanvas());
+    }
+
+    // --- Init & events ---
+    document.getElementById('btn-continue').addEventListener('click', () => startLevel(getContinueLevelId()));
+    document.getElementById('btn-all-levels-home').addEventListener('click', showLevelsScreen);
+    document.getElementById('btn-freeplay-home').addEventListener('click', startFreePlay);
+
+    document.getElementById('btn-switch-user').addEventListener('click', () => { renderUserSelectScreen(); showScreen('user'); });
+    document.getElementById('btn-back-home').addEventListener('click', () => { updateHomeScreen(); showScreen('home'); });
+    document.getElementById('btn-home-from-game').addEventListener('click', () => { updateHomeScreen(); showScreen('home'); });
+    document.getElementById('btn-levels-from-game').addEventListener('click', showLevelsScreen);
+    document.getElementById('btn-clear-freeplay').addEventListener('click', clearFreePlay);
+    document.getElementById('fp-bars-1').addEventListener('click', () => setFreePlayNumBars(1));
+    document.getElementById('fp-bars-2').addEventListener('click', () => setFreePlayNumBars(2));
+    document.getElementById('btn-results-retry').addEventListener('click', () => startLevel(currentLevelId));
+    document.getElementById('btn-results-levels').addEventListener('click', showLevelsScreen);
+    document.getElementById('btn-results-next').addEventListener('click', () => {
+      const next = LEVELS.find(l => l.id === currentLevelId + 1);
+      if (next) startLevel(next.id);
+      else showLevelsScreen();
+    });
+
+    document.getElementById('btn-new-header').addEventListener('click', resetExercise);
+    document.getElementById('btn-new-footer').addEventListener('click', resetExercise);
+    document.getElementById('btn-hint').addEventListener('click', giveHint);
+    document.getElementById('btn-play').addEventListener('click', () => playRhythm());
+
+    // Re-unlock audio on every tap while playing (iOS suspends the context between interactions).
+    function primeAudioOnGesture() {
+      if (!screenGame.classList.contains('hidden')) ensureBeatsAudio();
+    }
+    window.addEventListener('pointerdown', primeAudioOnGesture, true);
+
+    document.addEventListener('visibilitychange', () => {
+      if (!audioCtx) return;
+      if (audioCtx.state === 'suspended') {
+        audioReady = false;
+        updateAudioStatusUI();
+      } else if (audioCtx.state === 'running') {
+        audioReady = true;
+        updateAudioStatusUI();
+      }
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+
+    updateAudioStatusUI();
+    const appData = loadAppData();
+    currentUserId = appData.currentUser || 'christian';
+    renderUserSelectScreen();
+    renderAllUserSwitchers();
+    updateHomeScreen();
+    showScreen('user');
+  </script>
+</body>
+</html>

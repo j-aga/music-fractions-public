@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fraction Notes Adventure</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .note-btn { transition: all 0.1s; }
+    .note-btn:active { transform: scale(0.95); }
+    .measure-bar { transition: width 0.3s ease; }
+    .playing { animation: pulse 0.3s ease-in-out; }
+    @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+    body.embedded { padding: 1rem; }
+    body.embedded .adventure-embed-hide { display: none; }
+    body.embedded .adventure-top-bar { justify-content: flex-end; margin-bottom: 1rem; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-sky-100 to-violet-100 min-h-screen p-6">
+  <div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="adventure-top-bar flex items-center justify-between mb-6">
+      <div class="adventure-embed-hide">
+        <h1 class="text-5xl font-bold text-violet-800 flex items-center gap-3">
+          🎵 Fraction Notes Adventure
+        </h1>
+        <p class="text-xl text-violet-600 mt-1">See fractions • Hear rhythms • Make music!</p>
+      </div>
+      <div class="text-right">
+        <div id="audio-status" 
+             class="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-2xl shadow text-sm font-medium">
+          <span class="w-3 h-3 bg-amber-400 rounded-full animate-pulse"></span>
+          <span>Click Play to enable sound</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Note Palette -->
+    <div class="bg-white rounded-3xl shadow-xl p-6 mb-6">
+      <h2 class="text-2xl font-semibold text-violet-700 mb-4">Add Notes to Your Rhythm</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <!-- Note buttons -->
+        <button onclick="addNote('whole', 1, 'Whole Note (1)')" 
+                class="note-btn flex flex-col items-center justify-center p-6 bg-red-500 hover:bg-red-600 text-white rounded-2xl shadow-lg">
+          <div class="text-4xl mb-1">𝅝</div>
+          <div class="font-bold text-xl">Whole</div>
+          <div class="text-3xl font-mono">1</div>
+        </button>
+
+        <button onclick="addNote('half', 0.5, 'Half Note (½)')" 
+                class="note-btn flex flex-col items-center justify-center p-6 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl shadow-lg">
+          <div class="text-4xl mb-1">𝅗𝅥</div>
+          <div class="font-bold text-xl">Half</div>
+          <div class="text-3xl font-mono">½</div>
+        </button>
+
+        <button onclick="addNote('quarter', 0.25, 'Quarter Note (¼)')" 
+                class="note-btn flex flex-col items-center justify-center p-6 bg-sky-500 hover:bg-sky-600 text-white rounded-2xl shadow-lg">
+          <div class="text-4xl mb-1">♩</div>
+          <div class="font-bold text-xl">Quarter</div>
+          <div class="text-3xl font-mono">¼</div>
+        </button>
+
+        <button onclick="addNote('eighth', 0.125, 'Eighth Note (⅛)')" 
+                class="note-btn flex flex-col items-center justify-center p-6 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg">
+          <div class="text-4xl mb-1">♪</div>
+          <div class="font-bold text-xl">Eighth</div>
+          <div class="text-3xl font-mono">⅛</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- Visual Fraction Bar + Current Total -->
+    <div class="bg-white rounded-3xl shadow-xl p-6 mb-6">
+      <div class="flex justify-between items-end mb-3">
+        <h2 class="text-2xl font-semibold text-violet-700">Your Measure (how the fractions add up)</h2>
+        <div id="total-fraction" 
+             class="text-4xl font-mono font-bold text-violet-800 bg-violet-100 px-6 py-2 rounded-2xl">0/4</div>
+      </div>
+
+      <!-- The visual bar -->
+      <div id="measure-container" 
+           class="relative h-16 bg-gray-200 rounded-2xl overflow-hidden shadow-inner flex">
+        <!-- Colored segments added by JS -->
+      </div>
+      <p class="text-sm text-gray-500 mt-2">Each coloured block = the fraction of the whole measure</p>
+    </div>
+
+    <!-- Current Sequence -->
+    <div class="bg-white rounded-3xl shadow-xl p-6 mb-6">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-2xl font-semibold text-violet-700">Your Rhythm Sequence</h2>
+        <button onclick="clearSequence()" 
+                class="px-5 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl">Clear all</button>
+      </div>
+      <div id="sequence-list" class="flex flex-wrap gap-3 min-h-[60px]">
+        <!-- Note chips added by JS -->
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="flex flex-wrap gap-4 justify-center">
+      <button onclick="playRhythm()" 
+              class="flex-1 md:flex-none px-16 py-5 text-3xl font-bold bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white rounded-3xl shadow-xl flex items-center justify-center gap-3">
+        ▶️ Play Rhythm
+      </button>
+      
+      <button onclick="stopRhythm()" 
+              class="px-10 py-5 text-xl font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-3xl shadow border border-gray-200">
+        ⏹ Stop
+      </button>
+      
+      <button onclick="testSound()" 
+              class="px-8 py-5 text-xl font-semibold bg-white hover:bg-gray-100 text-gray-700 rounded-3xl shadow border border-gray-200">
+        🔊 Test Tone
+      </button>
+    </div>
+
+    <p class="text-center text-sm text-gray-500 mt-6">
+      Tip: Click Play first to wake up the sound. Then add notes and play again. The coloured bar shows exactly what fraction each note represents!
+    </p>
+  </div>
+
+  <script>
+    // === AUDIO SYSTEM (the fix is here) ===
+    let audioCtx = null;
+    let isPlaying = false;
+    let currentTimeouts = [];
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().then(() => {
+          updateAudioStatus(true);
+        });
+      } else {
+        updateAudioStatus(true);
+      }
+    }
+
+    function updateAudioStatus(enabled) {
+      const status = document.getElementById('audio-status');
+      if (enabled) {
+        status.innerHTML = `
+          <span class="w-3 h-3 bg-emerald-500 rounded-full"></span>
+          <span class="font-medium text-emerald-700">Audio ready ✓</span>
+        `;
+      } else {
+        status.innerHTML = `
+          <span class="w-3 h-3 bg-amber-400 rounded-full animate-pulse"></span>
+          <span>Click Play to enable sound</span>
+        `;
+      }
+    }
+
+    // Play a single note with nice envelope
+    function playNote(startTime, duration, type) {
+      if (!audioCtx) return;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+
+      // Different character per note length (fun for kids)
+      if (type === 'whole') {
+        osc.type = 'sine';
+        osc.frequency.value = 330;
+        filter.type = 'lowpass';
+        filter.frequency.value = 800;
+      } else if (type === 'half') {
+        osc.type = 'sawtooth';
+        osc.frequency.value = 440;
+      } else if (type === 'quarter') {
+        osc.type = 'square';
+        osc.frequency.value = 523; // C5
+      } else { // eighth
+        osc.type = 'triangle';
+        osc.frequency.value = 660;
+      }
+
+      // Envelope for smooth sound
+      gain.gain.value = 0;
+      gain.gain.setValueAtTime(0.6, startTime);
+      gain.gain.linearRampToValueAtTime(0, startTime + duration * 0.9);
+
+      filter.frequency.value = 1200;
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start(startTime);
+      osc.stop(startTime + duration + 0.2);
+    }
+
+    // === RHYTHM PLAYBACK ===
+    let sequence = [];
+
+    function addNote(type, value, label) {
+      sequence.push({ type, value, label });
+      updateUI();
+    }
+
+    function clearSequence() {
+      sequence = [];
+      updateUI();
+    }
+
+    function updateUI() {
+      // Update sequence chips
+      const list = document.getElementById('sequence-list');
+      list.innerHTML = '';
+      
+      let total = 0;
+      sequence.forEach((note, index) => {
+        total += note.value;
+        const chip = document.createElement('div');
+        chip.className = `flex items-center gap-2 px-4 py-2 rounded-2xl text-white font-medium shadow ${getColor(note.type)}`;
+        chip.innerHTML = `
+          <span>${note.label}</span>
+          <button onclick="removeNote(${index})" class="ml-1 text-xs opacity-70 hover:opacity-100">✕</button>
+        `;
+        list.appendChild(chip);
+      });
+
+      // Update fraction total (simplified display)
+      const totalEl = document.getElementById('total-fraction');
+      const quarters = Math.round(total * 4);
+      totalEl.textContent = `${quarters}/4`;
+
+      // Update visual measure bar
+      updateMeasureBar(total);
+    }
+
+    function getColor(type) {
+      if (type === 'whole') return 'bg-red-500';
+      if (type === 'half') return 'bg-amber-500';
+      if (type === 'quarter') return 'bg-sky-500';
+      return 'bg-emerald-500';
+    }
+
+    function updateMeasureBar(total) {
+      const container = document.getElementById('measure-container');
+      container.innerHTML = '';
+
+      let running = 0;
+      sequence.forEach(note => {
+        const seg = document.createElement('div');
+        seg.className = `h-full ${getColor(note.type)} flex items-center justify-center text-white text-xs font-bold`;
+        const percent = (note.value / 1) * 100; // relative to whole
+        seg.style.width = `${percent}%`;
+        seg.style.minWidth = '8%';
+        seg.innerHTML = `<span class="drop-shadow">${note.label}</span>`;
+        container.appendChild(seg);
+        running += note.value;
+      });
+
+      // If nothing added yet
+      if (sequence.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'h-full w-full flex items-center justify-center text-gray-400 text-sm';
+        empty.textContent = 'Add notes above → fractions will appear here';
+        container.appendChild(empty);
+      }
+    }
+
+    function removeNote(index) {
+      sequence.splice(index, 1);
+      updateUI();
+    }
+
+    function playRhythm() {
+      initAudio(); // <-- this is the key fix
+
+      if (sequence.length === 0) {
+        // play a quick example so user hears something
+        sequence = [
+          {type:'quarter', value:0.25, label:'¼'},
+          {type:'quarter', value:0.25, label:'¼'},
+          {type:'half', value:0.5, label:'½'}
+        ];
+        updateUI();
+      }
+
+      stopRhythm(); // clear any previous
+
+      isPlaying = true;
+      const tempo = 0.5; // seconds per quarter note (120 bpm)
+      let time = audioCtx.currentTime + 0.1;
+
+      sequence.forEach((note, i) => {
+        const dur = note.value * 4 * tempo; // convert fraction to seconds
+        playNote(time, dur, note.type);
+
+        // highlight the current note chip
+        const timeout = setTimeout(() => {
+          highlightNote(i);
+        }, (time - audioCtx.currentTime) * 1000);
+        currentTimeouts.push(timeout);
+
+        time += dur;
+      });
+
+      // loop once more for fun
+      const loopTimeout = setTimeout(() => {
+        if (isPlaying) playRhythm();
+      }, (time - audioCtx.currentTime + 0.3) * 1000);
+      currentTimeouts.push(loopTimeout);
+    }
+
+    function highlightNote(index) {
+      const chips = document.getElementById('sequence-list').children;
+      if (chips[index]) {
+        chips[index].classList.add('playing', 'ring-4', 'ring-white');
+        setTimeout(() => {
+          if (chips[index]) chips[index].classList.remove('playing', 'ring-4', 'ring-white');
+        }, 350);
+      }
+    }
+
+    function stopRhythm() {
+      isPlaying = false;
+      currentTimeouts.forEach(t => clearTimeout(t));
+      currentTimeouts = [];
+      
+      // remove any playing highlights
+      document.querySelectorAll('#sequence-list > div').forEach(el => 
+        el.classList.remove('playing', 'ring-4', 'ring-white')
+      );
+    }
+
+    function testSound() {
+      initAudio();
+      const now = audioCtx.currentTime;
+      playNote(now, 0.6, 'quarter');
+      setTimeout(() => playNote(audioCtx.currentTime, 0.4, 'eighth'), 300);
+    }
+
+    // Keyboard support (nice for testing)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        playRhythm();
+      }
+      if (e.key.toLowerCase() === 'c') clearSequence();
+    });
+
+    // Compact layout when opened inside FractionBeats (iframe)
+    if (window.self !== window.top) {
+      document.body.classList.add('embedded');
+    }
+
+    // Initial state
+    window.onload = () => {
+      updateUI();
+      updateAudioStatus(false);
+      // Optional: pre-load one example
+      // sequence = [{type:'quarter',value:0.25,label:'¼'},{type:'quarter',value:0.25,label:'¼'},{type:'half',value:0.5,label:'½'}];
+      // updateUI();
+    };
+  </script>
+</body>
+</html>

@@ -171,6 +171,115 @@
     .notes-icon-eq { height: 1.25rem; width: auto; vertical-align: -0.15em; }
     .explorer-btn { transition: all 0.1s ease; }
     .explorer-btn:active { transform: scale(0.95); }
+
+    /* --- String Quest: violin fingerboard --- */
+    #violin-staff-canvas { touch-action: manipulation; display: block; }
+
+    .violin-fb {
+      display: grid;
+      width: 100%;
+      max-width: 26rem;
+      margin: 0 auto;
+      background: linear-gradient(180deg, #3f2a1d 0%, #2b1a10 100%);
+      border-radius: 1rem;
+      padding: 0.5rem 0.35rem 0.75rem;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.45);
+      user-select: none;
+    }
+    .violin-fb-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: #d6c3b2;
+    }
+    .violin-fb-open-label { font-size: 0.6rem; letter-spacing: 0.03em; }
+    /* The nut: thick bar across the top of the fingerboard. */
+    .violin-fb-nut {
+      grid-column: 2 / -1;
+      height: 0.45rem;
+      background: linear-gradient(180deg, #f5e6d3, #c8ab8c);
+      border-radius: 2px;
+      margin-bottom: 0.1rem;
+    }
+    .violin-fb-cell {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 3.1rem;
+    }
+    /* The string itself, running down behind the finger dots. */
+    .violin-fb-cell::before {
+      content: '';
+      position: absolute;
+      top: 0; bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: var(--string-width, 2px);
+      background: linear-gradient(90deg, #6b7280, #e5e7eb 45%, #9ca3af);
+      border-radius: 2px;
+    }
+    .violin-fb-dot {
+      position: relative;
+      z-index: 1;
+      width: 2.6rem;
+      height: 2.6rem;
+      border-radius: 9999px;
+      border: 2px solid rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.55);
+      font-weight: 800;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+    }
+    .violin-fb-dot:not(:disabled):hover { background: rgba(255,255,255,0.18); color: #fff; }
+    .violin-fb-dot:not(:disabled):active { transform: scale(0.9); }
+    .violin-fb-dot.is-picked {
+      background: var(--string-color, #6366f1);
+      border-color: #fff;
+      color: #fff;
+      box-shadow: 0 0 0 4px rgba(255,255,255,0.25);
+    }
+    .violin-fb-dot.is-correct {
+      background: #16a34a;
+      border-color: #bbf7d0;
+      color: #fff;
+      box-shadow: 0 0 0 4px rgba(34,197,94,0.35);
+    }
+    .violin-fb-dot.is-wrong {
+      background: #e11d48;
+      border-color: #fecdd3;
+      color: #fff;
+    }
+    .violin-fb-dot.is-alt {
+      background: rgba(22,163,74,0.35);
+      border-color: #86efac;
+      color: #dcfce7;
+    }
+    .violin-string-pill {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 1.75rem;
+      margin: 0 0.15rem 0.25rem;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 0.8rem;
+      color: #fff;
+    }
+
+    .violin-name-btn { transition: transform 0.12s ease, background 0.12s ease; }
+    .violin-name-btn:not(:disabled):active { transform: scale(0.93); }
+
+    @keyframes violin-timer-flash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+    .violin-timer-low { animation: violin-timer-flash 0.5s ease-in-out infinite; }
   </style>
 </head>
 <body class="min-h-screen font-sans text-slate-800">
@@ -202,7 +311,12 @@
         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-indigo-700 tracking-tight">Music Fractions</h1>
         <p class="mt-4 text-base sm:text-lg text-slate-600 max-w-xl mx-auto font-medium">Pick any app below — each one helps you understand how note lengths add up to a full bar.</p>
       </header>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6">
+        <button type="button" onclick="openStringQuest()" class="app-card group flex flex-col rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 p-6 sm:p-7 text-white shadow-xl min-h-[280px] text-left">
+          <div class="text-5xl mb-4">🎻</div><h2 class="text-2xl font-extrabold">String Quest</h2>
+          <p class="mt-2 text-emerald-100 text-sm sm:text-base leading-relaxed flex-1">Read the note on the staff and find the string and finger — no numbers written on the page.</p>
+          <span class="mt-6 inline-flex items-center gap-2 font-bold text-sm bg-white/20 rounded-xl px-4 py-2.5 w-fit">Open String Quest →</span>
+        </button>
         <button type="button" onclick="openExplorer()" class="app-card group flex flex-col rounded-3xl bg-gradient-to-br from-rose-500 to-orange-500 p-6 sm:p-7 text-white shadow-xl min-h-[280px] text-left">
           <div class="text-5xl mb-4">🍕</div><h2 class="text-2xl font-extrabold">Fraction Explorer</h2>
           <p class="mt-2 text-rose-100 text-sm sm:text-base leading-relaxed flex-1">Tap each note to see its fraction of a 4-beat bar — as pizza, chocolate, and pie.</p>
@@ -253,7 +367,7 @@
         <button onclick="explorerExploreNote('minim', 2, 'Minim')" 
                 class="explorer-btn p-6 bg-amber-600 hover:bg-amber-500 rounded-3xl flex flex-col items-center">
           <div class="note-icon-slot mb-2">
-            <span class="note-glyph note-unicode" aria-hidden="true">𝅗𝅥</span>
+            <span class="note-glyph note-unicode" aria-hidden="true">𝅗𝅥</span>
             <svg viewBox="0 0 75 150" class="note-svg note-fallback-svg" aria-hidden="true"><use href="#note-minim"/></svg>
           </div>
           <div class="font-bold text-xl">Minim</div>
@@ -286,7 +400,7 @@
         <button onclick="explorerExploreNote('semiquaver', 0.25, 'Semiquaver')" 
                 class="explorer-btn p-6 bg-violet-600 hover:bg-violet-500 rounded-3xl flex flex-col items-center">
           <div class="note-icon-slot mb-2">
-            <span class="note-glyph note-unicode" aria-hidden="true">𝅘𝅥𝅯</span>
+            <span class="note-glyph note-unicode" aria-hidden="true">𝅘𝅥𝅯</span>
             <svg viewBox="0 0 75 150" class="note-svg note-fallback-svg" aria-hidden="true"><use href="#note-semiquaver"/></svg>
           </div>
           <div class="font-bold text-xl">Semiquaver</div>
@@ -376,7 +490,7 @@
         <button onclick="notesAddNote('minim', 2)" 
                 class="notes-btn p-5 bg-amber-600 hover:bg-amber-500 rounded-3xl flex flex-col items-center">
           <div class="note-icon-slot mb-1">
-            <span class="note-glyph note-unicode" aria-hidden="true">𝅗𝅥</span>
+            <span class="note-glyph note-unicode" aria-hidden="true">𝅗𝅥</span>
             <svg viewBox="0 0 75 150" class="note-svg note-fallback-svg" aria-hidden="true"><use href="#note-minim"/></svg>
           </div>
           <div class="font-bold">Minim</div>
@@ -409,7 +523,7 @@
         <button onclick="notesAddNote('semiquaver', 0.25)" 
                 class="notes-btn p-5 bg-violet-600 hover:bg-violet-500 rounded-3xl flex flex-col items-center">
           <div class="note-icon-slot mb-1">
-            <span class="note-glyph note-unicode" aria-hidden="true">𝅘𝅥𝅯</span>
+            <span class="note-glyph note-unicode" aria-hidden="true">𝅘𝅥𝅯</span>
             <svg viewBox="0 0 75 150" class="note-svg note-fallback-svg" aria-hidden="true"><use href="#note-semiquaver"/></svg>
           </div>
           <div class="font-bold">Semiquaver</div>
@@ -673,6 +787,101 @@
     </section>
   </main>
   </div><!-- /screen-game -->
+
+  <!-- ========== STRING QUEST: LEVEL SELECT ========== -->
+  <div id="screen-violin-levels" class="hidden min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-100 px-4 sm:px-6 lg:px-10 py-6">
+    <div class="max-w-6xl mx-auto">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <a href="#" onclick="showScreen('landing'); return false;"
+          class="text-sm font-bold text-teal-600 hover:text-teal-800">← All Apps</a>
+        <p id="violin-total-stars" class="text-sm font-bold text-amber-600"></p>
+      </div>
+      <header class="text-center mb-5">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-teal-700">🎻 String Quest</h1>
+        <p class="mt-2 text-sm sm:text-base text-teal-600 font-medium max-w-xl mx-auto">
+          Read the note on the staff, then find it on the violin — no finger numbers written on the page.
+        </p>
+      </header>
+      <div id="violin-user-switcher" class="flex flex-wrap justify-center gap-2 mb-4"></div>
+      <div class="flex justify-center mb-6">
+        <button id="violin-speed-toggle" type="button"
+          class="px-5 py-2.5 rounded-2xl border-2 font-extrabold text-sm transition-all active:scale-95"></button>
+      </div>
+      <p id="violin-speed-hint" class="text-center text-xs text-slate-500 font-medium mb-5 max-w-md mx-auto"></p>
+      <div id="violin-level-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    </div>
+  </div>
+
+  <!-- ========== STRING QUEST: GAME ========== -->
+  <div id="screen-violin-game" class="hidden min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-100">
+    <main class="max-w-3xl mx-auto px-4 py-4 space-y-3">
+      <div class="flex items-center justify-between gap-3">
+        <button id="violin-btn-back"
+          class="px-3 py-1.5 rounded-xl bg-white border-2 border-teal-200 text-teal-700 font-bold text-xs shadow active:scale-95 transition-all">
+          ← Levels
+        </button>
+        <span id="violin-level-badge" class="px-3 py-1 rounded-full bg-teal-100 text-teal-700 font-extrabold text-xs"></span>
+        <p id="violin-player-label" class="text-xs font-bold text-teal-600"></p>
+      </div>
+
+      <div class="flex items-center justify-between gap-3">
+        <p id="violin-progress-label" class="text-sm font-extrabold text-slate-600"></p>
+        <div id="violin-score-dots" class="flex gap-1"></div>
+      </div>
+
+      <div id="violin-timer-wrap" class="hidden h-2.5 w-full rounded-full bg-slate-200 overflow-hidden">
+        <div id="violin-timer-bar" class="h-full w-full rounded-full bg-emerald-500 transition-none"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-lg border-2 border-teal-200 p-2">
+        <div class="w-full h-48 sm:h-56">
+          <canvas id="violin-staff-canvas" class="w-full h-full rounded-lg" aria-label="Musical staff showing the note to identify"></canvas>
+        </div>
+      </div>
+
+      <p id="violin-feedback" class="text-center text-sm font-bold min-h-[2.5rem] flex items-center justify-center px-2" aria-live="polite"></p>
+
+      <div id="violin-answer-fingerboard" class="hidden"></div>
+      <div id="violin-answer-names" class="hidden flex flex-wrap justify-center gap-2"></div>
+
+      <div class="flex justify-center gap-3 pt-1 pb-6">
+        <button id="violin-btn-next"
+          class="hidden px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 active:scale-95 text-white font-extrabold text-base shadow-lg transition-all">
+          Next Note →
+        </button>
+        <button id="violin-btn-hear"
+          class="px-5 py-2.5 rounded-xl bg-white border-2 border-teal-200 text-teal-700 font-extrabold text-sm shadow active:scale-95 transition-all">
+          🔊 Hear it
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========== STRING QUEST: RESULTS ========== -->
+  <div id="screen-violin-results" class="hidden min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-100 flex flex-col items-center justify-center px-4 py-8">
+    <div class="bg-white/95 rounded-3xl shadow-2xl border-2 border-teal-200 p-8 max-w-md w-full text-center">
+      <div class="text-6xl mb-2">🎻</div>
+      <h2 id="violin-results-level" class="text-2xl sm:text-3xl font-extrabold text-teal-700"></h2>
+      <p id="violin-results-message" class="mt-2 text-sm text-slate-600 font-medium"></p>
+      <div id="violin-results-stars" class="flex justify-center gap-3 my-6 text-5xl"></div>
+      <p id="violin-results-stats" class="text-xs text-slate-500 font-medium mb-2"></p>
+      <div id="violin-results-missed" class="text-xs text-slate-600 font-medium mb-6"></div>
+      <div class="flex flex-col gap-3">
+        <button id="violin-btn-results-next"
+          class="px-6 py-3 rounded-2xl bg-teal-500 hover:bg-teal-600 active:scale-95 text-white font-extrabold shadow-lg transition-all">
+          Next Level →
+        </button>
+        <button id="violin-btn-results-retry"
+          class="px-6 py-3 rounded-2xl bg-white border-2 border-teal-300 text-teal-700 font-extrabold active:scale-95 transition-all">
+          Try Again
+        </button>
+        <button id="violin-btn-results-levels"
+          class="px-6 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold text-sm active:scale-95 transition-all">
+          All Levels
+        </button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const MUSIC_FONT = 'Noto Music';
@@ -977,6 +1186,9 @@
     const screenLevels = document.getElementById('screen-levels');
     const screenGame = document.getElementById('screen-game');
     const screenResults = document.getElementById('screen-results');
+    const screenViolinLevels = document.getElementById('screen-violin-levels');
+    const screenViolinGame = document.getElementById('screen-violin-game');
+    const screenViolinResults = document.getElementById('screen-violin-results');
 
     const levelCardsGrid = document.getElementById('level-cards-grid');
     const barNavSection = document.getElementById('bar-nav-section');
@@ -1282,25 +1494,25 @@
       drawStaff();
     }
 
-    function drawTrebleClef(x, staffTop, lineGap) {
-      ctx.save();
-      ctx.strokeStyle = '#1e293b';
-      ctx.fillStyle = '#1e293b';
-      ctx.lineWidth = 1.8;
-      ctx.lineCap = 'round';
+    function drawTrebleClef(x, staffTop, lineGap, c = ctx) {
+      c.save();
+      c.strokeStyle = '#1e293b';
+      c.fillStyle = '#1e293b';
+      c.lineWidth = 1.8;
+      c.lineCap = 'round';
 
       const s = lineGap / 10;
       const mid = staffTop + lineGap * 2;
-      ctx.beginPath();
-      ctx.moveTo(x + 14 * s, staffTop - lineGap * 0.3);
-      ctx.bezierCurveTo(x + 6 * s, staffTop + lineGap * 0.9, x + 2 * s, mid, x + 8 * s, mid + lineGap * 1.1);
-      ctx.bezierCurveTo(x + 17 * s, mid + lineGap * 2.5, x + 22 * s, staffTop + lineGap * 3.4, x + 11 * s, staffTop + lineGap * 4.3);
-      ctx.stroke();
+      c.beginPath();
+      c.moveTo(x + 14 * s, staffTop - lineGap * 0.3);
+      c.bezierCurveTo(x + 6 * s, staffTop + lineGap * 0.9, x + 2 * s, mid, x + 8 * s, mid + lineGap * 1.1);
+      c.bezierCurveTo(x + 17 * s, mid + lineGap * 2.5, x + 22 * s, staffTop + lineGap * 3.4, x + 11 * s, staffTop + lineGap * 4.3);
+      c.stroke();
 
-      ctx.beginPath();
-      ctx.ellipse(x + 16 * s, staffTop + lineGap * 3.2, 4 * s, 3.2 * s, -0.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      c.beginPath();
+      c.ellipse(x + 16 * s, staffTop + lineGap * 3.2, 4 * s, 3.2 * s, -0.5, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
     }
 
     /** Group consecutive quavers/semiquavers for beaming within one bar. */
@@ -2162,7 +2374,10 @@
         let data = raw ? JSON.parse(raw) : defaultAppData();
         if (!data.users) data = migrateLegacyProgress(defaultAppData());
         else data = migrateLegacyProgress(data);
-        USERS.forEach(u => { if (!data.users[u.id]) data.users[u.id] = { stars: {} }; });
+        USERS.forEach(u => {
+          if (!data.users[u.id]) data.users[u.id] = { stars: {} };
+          if (!data.users[u.id].violinStars) data.users[u.id].violinStars = {};
+        });
         return data;
       } catch { return defaultAppData(); }
     }
@@ -2285,6 +2500,10 @@
       screenLevels.classList.toggle('hidden', name !== 'levels');
       screenGame.classList.toggle('hidden', name !== 'game');
       screenResults.classList.toggle('hidden', name !== 'results');
+      screenViolinLevels.classList.toggle('hidden', name !== 'violin-levels');
+      screenViolinGame.classList.toggle('hidden', name !== 'violin-game');
+      screenViolinResults.classList.toggle('hidden', name !== 'violin-results');
+      if (name !== 'violin-game' && typeof violinExit === 'function') violinExit();
       if (name === 'notes') {
         if (typeof notesStopRhythm === 'function') notesStopRhythm();
         if (typeof notesResetAll === 'function') notesResetAll();
@@ -3055,6 +3274,765 @@ function explorerExploreNote(type, beats, name) {
     }
 
     
+
+    // ==================================================================
+    // STRING QUEST — read a note on the staff, find it on the violin
+    // ==================================================================
+
+    // Diatonic staff position: octave * 7 + letter offset. Treble bottom line (E4) = 30.
+    const VIOLIN_LETTER_STEP = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
+    const VIOLIN_BOTTOM_LINE = 30; // E4 sits on the bottom line of the treble staff
+    const VIOLIN_MIDDLE_LINE = 34; // B4 — stems flip direction here
+
+    // First position only, written in C major so every sharp is shown as an accidental.
+    const VIOLIN_NOTES = {
+      G3:  { letter: 'G', octave: 3, sharp: false, midi: 55, name: 'G' },
+      A3:  { letter: 'A', octave: 3, sharp: false, midi: 57, name: 'A' },
+      B3:  { letter: 'B', octave: 3, sharp: false, midi: 59, name: 'B' },
+      C4:  { letter: 'C', octave: 4, sharp: false, midi: 60, name: 'C' },
+      D4:  { letter: 'D', octave: 4, sharp: false, midi: 62, name: 'D' },
+      E4:  { letter: 'E', octave: 4, sharp: false, midi: 64, name: 'E' },
+      F4:  { letter: 'F', octave: 4, sharp: false, midi: 65, name: 'F' },
+      Fs4: { letter: 'F', octave: 4, sharp: true,  midi: 66, name: 'F♯' },
+      G4:  { letter: 'G', octave: 4, sharp: false, midi: 67, name: 'G' },
+      A4:  { letter: 'A', octave: 4, sharp: false, midi: 69, name: 'A' },
+      B4:  { letter: 'B', octave: 4, sharp: false, midi: 71, name: 'B' },
+      C5:  { letter: 'C', octave: 5, sharp: false, midi: 72, name: 'C' },
+      Cs5: { letter: 'C', octave: 5, sharp: true,  midi: 73, name: 'C♯' },
+      D5:  { letter: 'D', octave: 5, sharp: false, midi: 74, name: 'D' },
+      E5:  { letter: 'E', octave: 5, sharp: false, midi: 76, name: 'E' },
+      Fs5: { letter: 'F', octave: 5, sharp: true,  midi: 78, name: 'F♯' },
+      G5:  { letter: 'G', octave: 5, sharp: false, midi: 79, name: 'G' },
+      Gs5: { letter: 'G', octave: 5, sharp: true,  midi: 80, name: 'G♯' },
+      A5:  { letter: 'A', octave: 5, sharp: false, midi: 81, name: 'A' },
+      B5:  { letter: 'B', octave: 5, sharp: false, midi: 83, name: 'B' },
+    };
+
+    const VIOLIN_STRINGS = [
+      { id: 'G', color: '#7c3aed', width: '5px' },
+      { id: 'D', color: '#0891b2', width: '4px' },
+      { id: 'A', color: '#059669', width: '3px' },
+      { id: 'E', color: '#e11d48', width: '2px' },
+    ];
+
+    // slot 1.5 is "low second finger" (the semitone below the usual 2nd finger spot).
+    const VIOLIN_POSITIONS = [
+      { string: 'G', slot: 0,   note: 'G3' },
+      { string: 'G', slot: 1,   note: 'A3' },
+      { string: 'G', slot: 2,   note: 'B3' },
+      { string: 'G', slot: 3,   note: 'C4' },
+      { string: 'G', slot: 4,   note: 'D4' },
+
+      { string: 'D', slot: 0,   note: 'D4' },
+      { string: 'D', slot: 1,   note: 'E4' },
+      { string: 'D', slot: 1.5, note: 'F4' },
+      { string: 'D', slot: 2,   note: 'Fs4' },
+      { string: 'D', slot: 3,   note: 'G4' },
+      { string: 'D', slot: 4,   note: 'A4' },
+
+      { string: 'A', slot: 0,   note: 'A4' },
+      { string: 'A', slot: 1,   note: 'B4' },
+      { string: 'A', slot: 1.5, note: 'C5' },
+      { string: 'A', slot: 2,   note: 'Cs5' },
+      { string: 'A', slot: 3,   note: 'D5' },
+      { string: 'A', slot: 4,   note: 'E5' },
+
+      { string: 'E', slot: 0,   note: 'E5' },
+      { string: 'E', slot: 1,   note: 'Fs5' },
+      { string: 'E', slot: 1.5, note: 'G5' },
+      { string: 'E', slot: 2,   note: 'Gs5' },
+      { string: 'E', slot: 3,   note: 'A5' },
+      { string: 'E', slot: 4,   note: 'B5' },
+    ];
+
+    const VIOLIN_SLOTS_BASIC = [0, 1, 2, 3];
+
+    const VIOLIN_LEVELS = [
+      { id: 1, name: 'Open Strings', emoji: '🎻',
+        description: 'Just the four open strings — G, D, A and E.',
+        answer: 'fingerboard', display: 'single', strings: ['G', 'D', 'A', 'E'], slots: [0] },
+      { id: 2, name: 'Name the Strings', emoji: '🔤',
+        description: 'Same four notes — this time say the letter name.',
+        answer: 'name', display: 'single', strings: ['G', 'D', 'A', 'E'], slots: [0] },
+      { id: 3, name: 'A String', emoji: '🅰️',
+        description: 'A, B, C♯ and D — fingers 0 to 3 on the A string.',
+        answer: 'fingerboard', display: 'single', strings: ['A'], slots: VIOLIN_SLOTS_BASIC },
+      { id: 4, name: 'E String', emoji: '⚡',
+        description: 'E, F♯, G♯ and A — up on the highest string.',
+        answer: 'fingerboard', display: 'single', strings: ['E'], slots: VIOLIN_SLOTS_BASIC },
+      { id: 5, name: 'Top Two Strings', emoji: '🎯',
+        description: 'A and E strings mixed together — which one is it?',
+        answer: 'fingerboard', display: 'single', strings: ['A', 'E'], slots: VIOLIN_SLOTS_BASIC },
+      { id: 6, name: 'Name the High Notes', emoji: '🔠',
+        description: 'Name every note on the A and E strings.',
+        answer: 'name', display: 'single', strings: ['A', 'E'], slots: VIOLIN_SLOTS_BASIC },
+      { id: 7, name: 'D String', emoji: '🎵',
+        description: 'D, E, F♯ and G — fingers 0 to 3 on the D string.',
+        answer: 'fingerboard', display: 'single', strings: ['D'], slots: VIOLIN_SLOTS_BASIC },
+      { id: 8, name: 'G String', emoji: '🐻',
+        description: 'The lowest string — watch out for the little ledger lines!',
+        answer: 'fingerboard', display: 'single', strings: ['G'], slots: VIOLIN_SLOTS_BASIC },
+      { id: 9, name: 'Bottom Two Strings', emoji: '🌊',
+        description: 'G and D strings mixed together.',
+        answer: 'fingerboard', display: 'single', strings: ['G', 'D'], slots: VIOLIN_SLOTS_BASIC },
+      { id: 10, name: 'Name the Low Notes', emoji: '🔡',
+        description: 'Name every note on the G and D strings.',
+        answer: 'name', display: 'single', strings: ['G', 'D'], slots: VIOLIN_SLOTS_BASIC },
+      { id: 11, name: 'All Four Strings', emoji: '🌟',
+        description: 'Every note in first position, fingers 0 to 3.',
+        answer: 'fingerboard', display: 'single', strings: ['G', 'D', 'A', 'E'], slots: VIOLIN_SLOTS_BASIC },
+      { id: 12, name: 'Name Any Note', emoji: '📖',
+        description: 'Name any note across all four strings.',
+        answer: 'name', display: 'single', strings: ['G', 'D', 'A', 'E'], slots: VIOLIN_SLOTS_BASIC },
+      { id: 13, name: 'Fourth Finger', emoji: '🖐️',
+        description: 'Adds 4th finger — some notes have two homes now!',
+        answer: 'fingerboard', display: 'single', strings: ['G', 'D', 'A', 'E'], slots: [0, 1, 2, 3, 4] },
+      { id: 14, name: 'Low Second Finger', emoji: '🎈',
+        description: 'F, C and G naturals — second finger slides back.',
+        answer: 'fingerboard', display: 'single', strings: ['G', 'D', 'A', 'E'], slots: [0, 1, 1.5, 2, 3] },
+      { id: 15, name: 'Reading Run', emoji: '🎼',
+        description: 'A whole line of notes — name them left to right.',
+        answer: 'name', display: 'line', strings: ['G', 'D', 'A', 'E'], slots: VIOLIN_SLOTS_BASIC },
+      { id: 16, name: 'Master Challenge', emoji: '🏆',
+        description: 'A full line, every note, every string and finger.',
+        answer: 'fingerboard', display: 'line', strings: ['G', 'D', 'A', 'E'], slots: [0, 1, 1.5, 2, 3, 4] },
+    ];
+
+    const VIOLIN_QUESTIONS_SINGLE = 10;
+    const VIOLIN_QUESTIONS_LINE = 8;
+
+    // --- String Quest state ---
+    let violinLevelId = 1;
+    let violinQuestions = [];
+    let violinIndex = 0;
+    let violinWrongCount = 0;
+    let violinMissed = [];
+    let violinLocked = false;
+    let violinSpeedRound = false;
+    let violinTimerHandle = null;
+    let violinTimerDeadline = 0;
+    let violinAdvanceHandle = null;
+
+    const violinCanvas = document.getElementById('violin-staff-canvas');
+    const violinCtx = violinCanvas.getContext('2d');
+    const violinFeedbackEl = document.getElementById('violin-feedback');
+    const violinFingerboardEl = document.getElementById('violin-answer-fingerboard');
+    const violinNamesEl = document.getElementById('violin-answer-names');
+    const violinTimerWrap = document.getElementById('violin-timer-wrap');
+    const violinTimerBar = document.getElementById('violin-timer-bar');
+    const violinNextBtn = document.getElementById('violin-btn-next');
+
+    function violinStaffIndex(noteId) {
+      const n = VIOLIN_NOTES[noteId];
+      return n.octave * 7 + VIOLIN_LETTER_STEP[n.letter];
+    }
+
+    function violinGetLevel(id = violinLevelId) {
+      return VIOLIN_LEVELS.find(l => l.id === id) || VIOLIN_LEVELS[0];
+    }
+
+    /** Positions that count as "in play" for a level. */
+    function violinActivePositions(level) {
+      return VIOLIN_POSITIONS.filter(p =>
+        level.strings.includes(p.string) && level.slots.includes(p.slot));
+    }
+
+    /** Distinct note ids in a level, low to high. */
+    function violinActiveNotes(level) {
+      const seen = new Set();
+      violinActivePositions(level).forEach(p => seen.add(p.note));
+      return [...seen].sort((a, b) => VIOLIN_NOTES[a].midi - VIOLIN_NOTES[b].midi);
+    }
+
+    function violinSlotLabel(slot) {
+      return slot === 1.5 ? '2' : String(slot);
+    }
+
+    function violinSlotRowLabel(slot) {
+      if (slot === 0) return '0<br><span class="violin-fb-open-label">open</span>';
+      if (slot === 1.5) return '2<br><span class="violin-fb-open-label">low</span>';
+      return String(slot);
+    }
+
+    function violinPositionText(pos) {
+      const finger = pos.slot === 0
+        ? 'open string'
+        : `${violinSlotLabel(pos.slot)}${pos.slot === 1.5 ? ' (low)' : ''}${pos.slot === 1 ? 'st' : pos.slot === 3 ? 'rd' : pos.slot === 4 ? 'th' : 'nd'} finger`;
+      return `${pos.string} string, ${finger}`;
+    }
+
+    function violinTimeLimit(level) {
+      return Math.max(3, 9 - (level.id - 1) * 0.4);
+    }
+
+    // --- Question generation ---
+    function violinBuildQuestions(level) {
+      const notes = violinActiveNotes(level);
+      const count = level.display === 'line' ? VIOLIN_QUESTIONS_LINE : VIOLIN_QUESTIONS_SINGLE;
+      const picked = [];
+      let bag = [];
+      while (picked.length < count) {
+        if (!bag.length) bag = shuffle(notes.slice());
+        const next = bag.pop();
+        // Avoid asking the same note twice in a row when there is a choice.
+        if (picked.length && picked[picked.length - 1].note === next && notes.length > 1) {
+          bag.unshift(next);
+          continue;
+        }
+        picked.push({ note: next, state: 'pending', picked: null });
+      }
+      return picked;
+    }
+
+    // --- Staff rendering ---
+    function violinResizeCanvas() {
+      const rect = violinCanvas.getBoundingClientRect();
+      if (!rect.width) return;
+      const dpr = window.devicePixelRatio || 1;
+      violinCanvas.width = Math.round(rect.width * dpr);
+      violinCanvas.height = Math.round(rect.height * dpr);
+      violinCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      violinDrawStaff();
+    }
+
+    function violinNoteColor(q, isCurrent) {
+      if (q.state === 'correct') return '#16a34a';
+      if (q.state === 'wrong') return '#e11d48';
+      return isCurrent ? '#1e293b' : '#cbd5e1';
+    }
+
+    function violinDrawLedgerLines(c, idx, x, staffTop, staffBottom, lineGap) {
+      const halfWidth = lineGap * 1.15;
+      c.strokeStyle = '#334155';
+      c.lineWidth = 1.5;
+      // Below the staff: ledger lines sit on C4 (28), A3 (26), ...
+      for (let l = VIOLIN_BOTTOM_LINE - 2; l >= idx; l -= 2) {
+        const y = staffBottom + (VIOLIN_BOTTOM_LINE - l) * (lineGap / 2);
+        c.beginPath();
+        c.moveTo(x - halfWidth, y);
+        c.lineTo(x + halfWidth, y);
+        c.stroke();
+      }
+      // Above the staff: A5 (40), C6 (42), ...
+      const topLine = VIOLIN_BOTTOM_LINE + 8; // F5
+      for (let l = topLine + 2; l <= idx; l += 2) {
+        const y = staffTop - (l - topLine) * (lineGap / 2);
+        c.beginPath();
+        c.moveTo(x - halfWidth, y);
+        c.lineTo(x + halfWidth, y);
+        c.stroke();
+      }
+    }
+
+    function violinDrawNote(c, noteId, x, staffTop, staffBottom, lineGap, color) {
+      const idx = violinStaffIndex(noteId);
+      const y = staffBottom - (idx - VIOLIN_BOTTOM_LINE) * (lineGap / 2);
+
+      violinDrawLedgerLines(c, idx, x, staffTop, staffBottom, lineGap);
+
+      const headRx = lineGap * 0.66;
+      const headRy = lineGap * 0.5;
+      c.fillStyle = color;
+      c.strokeStyle = color;
+      c.beginPath();
+      c.ellipse(x, y, headRx, headRy, -0.32, 0, Math.PI * 2);
+      c.fill();
+
+      // Stems point up below the middle line, down above it.
+      const stemLen = lineGap * 3.3;
+      c.lineWidth = 2;
+      c.beginPath();
+      if (idx < VIOLIN_MIDDLE_LINE) {
+        c.moveTo(x + headRx - 1, y);
+        c.lineTo(x + headRx - 1, y - stemLen);
+      } else {
+        c.moveTo(x - headRx + 1, y);
+        c.lineTo(x - headRx + 1, y + stemLen);
+      }
+      c.stroke();
+
+      if (VIOLIN_NOTES[noteId].sharp) {
+        c.fillStyle = color;
+        c.font = `bold ${lineGap * 2.1}px Georgia, serif`;
+        c.textAlign = 'right';
+        c.textBaseline = 'middle';
+        c.fillText('♯', x - headRx - 3, y);
+      }
+      return y;
+    }
+
+    function violinDrawStaff() {
+      const rect = violinCanvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      if (!w || !h) return;
+      const c = violinCtx;
+      c.clearRect(0, 0, w, h);
+
+      const level = violinGetLevel();
+      const paddingX = 10;
+      // G3 hangs 2.5 gaps below the staff and B5 sits 1.5 above, so reserve
+      // 3 gaps below and 2 above the five lines for ledger lines and stems.
+      const lineGap = Math.min(16, Math.max(8, h / 9));
+      const staffHeight = lineGap * 4;
+      const staffTop = (h - staffHeight) / 2 - lineGap * 0.5;
+      const staffBottom = staffTop + staffHeight;
+      const clefArea = lineGap * 3.6;
+
+      c.strokeStyle = '#334155';
+      c.lineWidth = 1.4;
+      for (let i = 0; i < 5; i++) {
+        const y = staffTop + i * lineGap;
+        c.beginPath();
+        c.moveTo(paddingX, y);
+        c.lineTo(w - paddingX, y);
+        c.stroke();
+      }
+      drawTrebleClef(paddingX + 2, staffTop, lineGap, c);
+
+      if (!violinQuestions.length) return;
+
+      const startX = paddingX + clefArea + lineGap * 1.4;
+      const endX = w - paddingX - lineGap * 1.4;
+
+      if (level.display === 'line') {
+        const step = (endX - startX) / Math.max(1, violinQuestions.length - 1);
+        // Highlight band behind the note being answered.
+        if (violinIndex < violinQuestions.length) {
+          const cx = startX + violinIndex * step;
+          const bandW = Math.min(step, lineGap * 2.6);
+          c.fillStyle = 'rgba(79, 70, 229, 0.12)';
+          c.fillRect(cx - bandW / 2, 0, bandW, h);
+        }
+        violinQuestions.forEach((q, i) => {
+          const x = startX + i * step;
+          violinDrawNote(c, q.note, x, staffTop, staffBottom, lineGap, violinNoteColor(q, i === violinIndex));
+        });
+      } else {
+        const q = violinQuestions[violinIndex];
+        if (!q) return;
+        violinDrawNote(c, q.note, (startX + endX) / 2, staffTop, staffBottom, lineGap, violinNoteColor(q, true));
+      }
+    }
+
+    // --- Answer UI: fingerboard ---
+    function violinRenderFingerboard() {
+      const level = violinGetLevel();
+      const slots = level.slots.slice().sort((a, b) => a - b);
+
+      let html = `<div class="violin-fb" style="grid-template-columns: 2.2rem repeat(${VIOLIN_STRINGS.length}, 1fr)">`;
+      html += '<div></div>';
+      VIOLIN_STRINGS.forEach(s => {
+        html += `<div class="violin-string-pill" style="background:${s.color}">${s.id}</div>`;
+      });
+      html += '<div></div><div class="violin-fb-nut"></div>';
+
+      slots.forEach(slot => {
+        html += `<div class="violin-fb-label">${violinSlotRowLabel(slot)}</div>`;
+        VIOLIN_STRINGS.forEach(s => {
+          html += `<div class="violin-fb-cell" style="--string-width:${s.width}">
+            <button type="button" class="violin-fb-dot" data-string="${s.id}" data-slot="${slot}"
+              style="--string-color:${s.color}"
+              aria-label="${s.id} string, finger ${violinSlotLabel(slot)}">${violinSlotLabel(slot)}</button>
+          </div>`;
+        });
+      });
+      html += '</div>';
+      violinFingerboardEl.innerHTML = html;
+
+      violinFingerboardEl.querySelectorAll('.violin-fb-dot').forEach(btn => {
+        btn.addEventListener('click', () => {
+          violinAnswer({ string: btn.dataset.string, slot: parseFloat(btn.dataset.slot) }, btn);
+        });
+      });
+    }
+
+    // --- Answer UI: note names ---
+    function violinRenderNames() {
+      const level = violinGetLevel();
+      const names = [];
+      violinActiveNotes(level).forEach(id => {
+        const nm = VIOLIN_NOTES[id].name;
+        if (!names.includes(nm)) names.push(nm);
+      });
+      violinNamesEl.innerHTML = '';
+      names.forEach(nm => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'violin-name-btn px-5 py-3 rounded-2xl bg-white border-2 border-teal-300 text-teal-700 font-extrabold text-xl shadow min-w-[3.75rem]';
+        btn.textContent = nm;
+        btn.dataset.name = nm;
+        btn.addEventListener('click', () => violinAnswer({ name: nm }, btn));
+        violinNamesEl.appendChild(btn);
+      });
+    }
+
+    function violinSetAnswersEnabled(enabled) {
+      violinFingerboardEl.querySelectorAll('button').forEach(b => { b.disabled = !enabled; });
+      violinNamesEl.querySelectorAll('button').forEach(b => { b.disabled = !enabled; });
+    }
+
+    function violinClearAnswerMarks() {
+      violinFingerboardEl.querySelectorAll('.violin-fb-dot').forEach(b => {
+        b.classList.remove('is-picked', 'is-correct', 'is-wrong', 'is-alt');
+      });
+      violinNamesEl.querySelectorAll('.violin-name-btn').forEach(b => {
+        b.className = 'violin-name-btn px-5 py-3 rounded-2xl bg-white border-2 border-teal-300 text-teal-700 font-extrabold text-xl shadow min-w-[3.75rem]';
+      });
+    }
+
+    function violinDotFor(string, slot) {
+      return violinFingerboardEl.querySelector(`.violin-fb-dot[data-string="${string}"][data-slot="${slot}"]`);
+    }
+
+    // --- Audio ---
+    function violinPlayNote(noteId, when = 0) {
+      if (!ensureBeatsAudio() || !audioCtx) return;
+      const freq = 440 * Math.pow(2, (VIOLIN_NOTES[noteId].midi - 69) / 12);
+      playTone(audioCtx, freq, audioCtx.currentTime + when, 0.7);
+    }
+
+    // --- Timer ---
+    function violinStopTimer() {
+      if (violinTimerHandle) { clearInterval(violinTimerHandle); violinTimerHandle = null; }
+      violinTimerBar.classList.remove('violin-timer-low');
+    }
+
+    function violinStartTimer() {
+      violinStopTimer();
+      const level = violinGetLevel();
+      if (!violinSpeedRound) {
+        violinTimerWrap.classList.add('hidden');
+        return;
+      }
+      violinTimerWrap.classList.remove('hidden');
+      const limitMs = violinTimeLimit(level) * 1000;
+      violinTimerDeadline = Date.now() + limitMs;
+      violinTimerBar.style.width = '100%';
+      violinTimerBar.className = 'h-full w-full rounded-full bg-emerald-500';
+      violinTimerHandle = setInterval(() => {
+        const left = violinTimerDeadline - Date.now();
+        const pct = Math.max(0, (left / limitMs) * 100);
+        violinTimerBar.style.width = `${pct}%`;
+        if (pct < 50) violinTimerBar.classList.replace('bg-emerald-500', 'bg-amber-500');
+        if (pct < 25) {
+          violinTimerBar.classList.replace('bg-amber-500', 'bg-rose-500');
+          violinTimerBar.classList.add('violin-timer-low');
+        }
+        if (left <= 0) {
+          violinStopTimer();
+          violinAnswer(null, null);
+        }
+      }, 60);
+    }
+
+    // --- Answer handling ---
+    function violinAnswer(choice, buttonEl) {
+      if (violinLocked) return;
+      violinLocked = true;
+      violinStopTimer();
+      violinSetAnswersEnabled(false);
+
+      const level = violinGetLevel();
+      const q = violinQuestions[violinIndex];
+      const note = VIOLIN_NOTES[q.note];
+      const correctPositions = violinActivePositions(level).filter(p => p.note === q.note);
+
+      let isCorrect = false;
+      if (choice === null) {
+        isCorrect = false; // ran out of time
+      } else if (level.answer === 'name') {
+        isCorrect = choice.name === note.name;
+      } else {
+        isCorrect = correctPositions.some(p => p.string === choice.string && p.slot === choice.slot);
+      }
+
+      q.state = isCorrect ? 'correct' : 'wrong';
+      q.picked = choice;
+      if (!isCorrect) {
+        violinWrongCount++;
+        if (!violinMissed.includes(q.note)) violinMissed.push(q.note);
+      }
+
+      // Mark up the answer UI.
+      if (level.answer === 'fingerboard') {
+        correctPositions.forEach((p, i) => {
+          const dot = violinDotFor(p.string, p.slot);
+          if (!dot) return;
+          const chosenThis = choice && choice.string === p.string && choice.slot === p.slot;
+          dot.classList.add(isCorrect && !chosenThis ? 'is-alt' : 'is-correct');
+        });
+        if (!isCorrect && buttonEl) buttonEl.classList.add('is-wrong');
+      } else if (buttonEl || !isCorrect) {
+        violinNamesEl.querySelectorAll('.violin-name-btn').forEach(b => {
+          if (b.dataset.name === note.name) {
+            b.className = 'violin-name-btn px-5 py-3 rounded-2xl bg-emerald-500 border-2 border-emerald-600 text-white font-extrabold text-xl shadow min-w-[3.75rem]';
+          }
+        });
+        if (!isCorrect && buttonEl) {
+          buttonEl.className = 'violin-name-btn px-5 py-3 rounded-2xl bg-rose-500 border-2 border-rose-600 text-white font-extrabold text-xl shadow min-w-[3.75rem]';
+        }
+      }
+
+      violinPlayNote(q.note);
+      violinDrawStaff();
+      violinUpdateScoreDots();
+
+      // Feedback text.
+      const where = correctPositions.map(violinPositionText).join(' — or ');
+      if (isCorrect) {
+        const extras = ['Yes!', 'Nice one!', 'Spot on!', 'Got it!', 'Perfect!'];
+        const alt = correctPositions.length > 1 && level.answer === 'fingerboard'
+          ? ` You can also play it: ${where}.`
+          : '';
+        violinFeedbackEl.className = 'text-center text-sm font-bold min-h-[2.5rem] flex items-center justify-center px-2 text-emerald-600';
+        violinFeedbackEl.textContent = `${extras[randomInt(0, extras.length - 1)]} That's ${note.name}.${alt}`;
+      } else {
+        const lead = choice === null ? "Time's up! " : '';
+        violinFeedbackEl.className = 'text-center text-sm font-bold min-h-[2.5rem] flex items-center justify-center px-2 text-rose-600';
+        violinFeedbackEl.textContent = `${lead}That note is ${note.name} — ${where}.`;
+      }
+
+      if (isCorrect) {
+        violinAdvanceHandle = setTimeout(violinNextQuestion, 1000);
+      } else {
+        violinNextBtn.classList.remove('hidden');
+      }
+    }
+
+    function violinNextQuestion() {
+      if (violinAdvanceHandle) { clearTimeout(violinAdvanceHandle); violinAdvanceHandle = null; }
+      violinNextBtn.classList.add('hidden');
+      violinIndex++;
+      if (violinIndex >= violinQuestions.length) {
+        violinFinishLevel();
+        return;
+      }
+      violinShowQuestion();
+    }
+
+    function violinShowQuestion() {
+      violinLocked = false;
+      violinClearAnswerMarks();
+      violinSetAnswersEnabled(true);
+      violinFeedbackEl.className = 'text-center text-sm font-bold min-h-[2.5rem] flex items-center justify-center px-2 text-slate-500';
+      violinFeedbackEl.textContent = violinGetLevel().answer === 'name'
+        ? 'Which note is this?'
+        : 'Which string and finger?';
+      violinUpdateProgress();
+      violinDrawStaff();
+      violinStartTimer();
+    }
+
+    function violinUpdateProgress() {
+      document.getElementById('violin-progress-label').textContent =
+        `Note ${Math.min(violinIndex + 1, violinQuestions.length)} of ${violinQuestions.length}`;
+      violinUpdateScoreDots();
+    }
+
+    function violinUpdateScoreDots() {
+      const el = document.getElementById('violin-score-dots');
+      el.innerHTML = violinQuestions.map(q => {
+        const color = q.state === 'correct' ? 'bg-emerald-500'
+          : q.state === 'wrong' ? 'bg-rose-400' : 'bg-slate-300';
+        return `<span class="w-2.5 h-2.5 rounded-full ${color}"></span>`;
+      }).join('');
+    }
+
+    // --- Level lifecycle ---
+    function violinStartLevel(id) {
+      violinLevelId = id;
+      const level = violinGetLevel();
+      violinQuestions = violinBuildQuestions(level);
+      violinIndex = 0;
+      violinWrongCount = 0;
+      violinMissed = [];
+      violinLocked = false;
+
+      document.getElementById('violin-level-badge').textContent = `Level ${level.id} · ${level.emoji} ${level.name}`;
+      const user = getCurrentUser();
+      document.getElementById('violin-player-label').textContent = `${user.emoji} ${user.name}`;
+
+      const useFingerboard = level.answer === 'fingerboard';
+      violinFingerboardEl.classList.toggle('hidden', !useFingerboard);
+      violinNamesEl.classList.toggle('hidden', useFingerboard);
+      violinNamesEl.classList.toggle('flex', !useFingerboard);
+      if (useFingerboard) violinRenderFingerboard(); else violinRenderNames();
+
+      showScreen('violin-game');
+      requestAnimationFrame(() => {
+        violinResizeCanvas();
+        violinShowQuestion();
+      });
+    }
+
+    function violinCalcStars() {
+      if (violinWrongCount <= 1) return 3;
+      if (violinWrongCount <= 3) return 2;
+      return 1;
+    }
+
+    function violinFinishLevel() {
+      violinStopTimer();
+      violinTimerWrap.classList.add('hidden');
+      const level = violinGetLevel();
+      const stars = violinCalcStars();
+      const prevBest = violinGetLevelStars(level.id);
+      violinSaveLevelStars(level.id, stars);
+
+      document.getElementById('violin-results-level').textContent = `${level.emoji} ${level.name}`;
+      const msg = stars === 3
+        ? (violinWrongCount === 0 ? 'Perfect — every single note!' : 'Brilliant reading!')
+        : stars === 2 ? 'Good going — nearly there!' : 'Nice try — go again and beat it!';
+      document.getElementById('violin-results-message').textContent =
+        prevBest > 0 && stars > prevBest ? `${msg} New best!` : msg;
+
+      const starsEl = document.getElementById('violin-results-stars');
+      starsEl.innerHTML = [1, 2, 3].map((i, idx) =>
+        `<span class="star-pop ${idx === 1 ? 'star-pop-delay-1' : idx === 2 ? 'star-pop-delay-2' : ''} ${i <= stars ? 'text-amber-400' : 'text-slate-200'}">★</span>`
+      ).join('');
+
+      const total = violinQuestions.length;
+      document.getElementById('violin-results-stats').textContent =
+        `${total - violinWrongCount} of ${total} correct${violinSpeedRound ? ' · Speed Round' : ''}`;
+
+      const missedEl = document.getElementById('violin-results-missed');
+      missedEl.innerHTML = violinMissed.length
+        ? `Worth another look: <strong>${violinMissed.map(n => VIOLIN_NOTES[n].name).join(', ')}</strong>`
+        : '';
+
+      document.getElementById('violin-btn-results-next').classList.toggle(
+        'hidden', !VIOLIN_LEVELS.some(l => l.id === level.id + 1));
+
+      showScreen('violin-results');
+      if (stars === 3 && typeof confetti === 'function') {
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+      }
+    }
+
+    // --- String Quest progress (shares the app's user profiles) ---
+    function violinGetLevelStars(levelId) {
+      const data = loadAppData();
+      return data.users[currentUserId]?.violinStars?.[levelId] || 0;
+    }
+
+    function violinSaveLevelStars(levelId, stars) {
+      const data = loadAppData();
+      const userData = data.users[currentUserId];
+      if (!userData.violinStars) userData.violinStars = {};
+      userData.violinStars[levelId] = Math.max(userData.violinStars[levelId] || 0, stars);
+      saveAppData(data);
+    }
+
+    function violinGetTotalStars(userId = currentUserId) {
+      const stars = loadAppData().users[userId]?.violinStars || {};
+      return VIOLIN_LEVELS.reduce((sum, l) => sum + (stars[l.id] || 0), 0);
+    }
+
+    // --- Level select screen ---
+    function violinRenderUserSwitcher() {
+      const el = document.getElementById('violin-user-switcher');
+      el.innerHTML = '';
+      USERS.forEach(user => {
+        const btn = document.createElement('button');
+        const active = user.id === currentUserId;
+        btn.className = `px-4 py-2 rounded-xl text-sm font-extrabold border-2 transition-all active:scale-95 ${
+          active ? 'border-teal-500 bg-teal-100 text-teal-700 shadow-[0_0_0_4px_rgba(20,184,166,0.25)]'
+                 : 'border-slate-200 bg-white text-slate-600 hover:border-teal-200'}`;
+        btn.textContent = `${user.emoji} ${user.name}`;
+        btn.addEventListener('click', () => {
+          if (user.id !== currentUserId) {
+            setCurrentUser(user.id);
+            violinRenderLevelSelect();
+          }
+        });
+        el.appendChild(btn);
+      });
+    }
+
+    function violinRenderSpeedToggle() {
+      const btn = document.getElementById('violin-speed-toggle');
+      btn.textContent = violinSpeedRound ? '⏱️ Speed Round: ON' : '⏱️ Speed Round: off';
+      btn.className = `px-5 py-2.5 rounded-2xl border-2 font-extrabold text-sm transition-all active:scale-95 ${
+        violinSpeedRound ? 'border-amber-400 bg-amber-100 text-amber-700' : 'border-slate-200 bg-white text-slate-500'}`;
+      document.getElementById('violin-speed-hint').textContent = violinSpeedRound
+        ? 'Each note is on a clock — it gets tighter as the levels go up. This is the bit that stops counting up the lines.'
+        : 'Take as long as you like. Flip Speed Round on when the notes start coming easily.';
+    }
+
+    function violinRenderLevelSelect() {
+      violinRenderUserSwitcher();
+      violinRenderSpeedToggle();
+      const user = getCurrentUser();
+      const total = violinGetTotalStars();
+      document.getElementById('violin-total-stars').textContent =
+        `${user.name}: ${total} of ${VIOLIN_LEVELS.length * 3} stars`;
+
+      const grid = document.getElementById('violin-level-grid');
+      grid.innerHTML = '';
+      VIOLIN_LEVELS.forEach(level => {
+        const stars = violinGetLevelStars(level.id);
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'level-card text-left rounded-2xl bg-white/95 border-2 border-teal-200 p-4 shadow-lg active:scale-95';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold text-teal-500">LEVEL ${level.id}</span>
+            <span class="text-2xl">${level.emoji}</span>
+          </div>
+          <p class="mt-1 text-lg font-extrabold text-slate-700">${level.name}</p>
+          <p class="mt-1 text-xs text-slate-500 font-medium min-h-[2.5rem]">${level.description}</p>
+          <div class="mt-2 flex items-center justify-between">
+            <span class="text-[0.65rem] font-bold uppercase tracking-wide text-teal-400">${
+              level.answer === 'name' ? 'Name the note' : 'String &amp; finger'
+            }${level.display === 'line' ? ' · full line' : ''}</span>
+            <span>${renderStarsHTML(stars, 'text-base')}</span>
+          </div>`;
+        card.addEventListener('click', () => violinStartLevel(level.id));
+        grid.appendChild(card);
+      });
+    }
+
+    function openStringQuest() {
+      violinRenderLevelSelect();
+      showScreen('violin-levels');
+    }
+
+    function violinExit() {
+      violinStopTimer();
+      if (violinAdvanceHandle) { clearTimeout(violinAdvanceHandle); violinAdvanceHandle = null; }
+    }
+
+    // --- String Quest wiring ---
+    document.getElementById('violin-btn-back').addEventListener('click', () => {
+      violinExit();
+      violinRenderLevelSelect();
+      showScreen('violin-levels');
+    });
+    document.getElementById('violin-speed-toggle').addEventListener('click', () => {
+      violinSpeedRound = !violinSpeedRound;
+      violinRenderSpeedToggle();
+    });
+    violinNextBtn.addEventListener('click', violinNextQuestion);
+    document.getElementById('violin-btn-hear').addEventListener('click', () => {
+      const q = violinQuestions[violinIndex];
+      if (q) violinPlayNote(q.note);
+    });
+    document.getElementById('violin-btn-results-next').addEventListener('click', () => {
+      violinStartLevel(violinLevelId + 1);
+    });
+    document.getElementById('violin-btn-results-retry').addEventListener('click', () => {
+      violinStartLevel(violinLevelId);
+    });
+    document.getElementById('violin-btn-results-levels').addEventListener('click', () => {
+      violinRenderLevelSelect();
+      showScreen('violin-levels');
+    });
+    window.addEventListener('resize', () => {
+      if (!document.getElementById('screen-violin-game').classList.contains('hidden')) {
+        violinResizeCanvas();
+      }
+    });
 
     // --- App init ---
 
