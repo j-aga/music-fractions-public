@@ -275,6 +275,11 @@
     .violin-name-btn { transition: transform 0.12s ease, background 0.12s ease; }
     .violin-name-btn:not(:disabled):active { transform: scale(0.93); }
 
+    /* Note SVGs default to white fill for the dark screens; recolour on light cards. */
+    .gk-glyph .note-svg { fill: #1e293b; }
+    .gk-glyph .note-icon-slot { height: 5rem; width: 5rem; margin: 0 auto; }
+    .gk-answer:disabled { cursor: default; }
+
     @keyframes violin-timer-flash {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.45; }
@@ -311,7 +316,17 @@
         <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-indigo-700 tracking-tight">Music Fractions</h1>
         <p class="mt-4 text-base sm:text-lg text-slate-600 max-w-xl mx-auto font-medium">Pick any app below — each one helps you understand how note lengths add up to a full bar.</p>
       </header>
-      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+        <button type="button" onclick="openAuralLab()" class="app-card group flex flex-col rounded-3xl bg-gradient-to-br from-sky-500 to-blue-700 p-6 sm:p-7 text-white shadow-xl min-h-[280px] text-left">
+          <div class="text-5xl mb-4">👂</div><h2 class="text-2xl font-extrabold">Aural Lab</h2>
+          <p class="mt-2 text-sky-100 text-sm sm:text-base leading-relaxed flex-1">All four Preliminary aural tests — clap the beat, clap it back, sing the phrase, higher or lower.</p>
+          <span class="mt-6 inline-flex items-center gap-2 font-bold text-sm bg-white/20 rounded-xl px-4 py-2.5 w-fit">Open Aural Lab →</span>
+        </button>
+        <button type="button" onclick="openTheoryDetective()" class="app-card group flex flex-col rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 p-6 sm:p-7 text-white shadow-xl min-h-[280px] text-left">
+          <div class="text-5xl mb-4">🔍</div><h2 class="text-2xl font-extrabold">Theory Detective</h2>
+          <p class="mt-2 text-amber-100 text-sm sm:text-base leading-relaxed flex-1">Every term, sign and note in your three exam pieces — exactly what the examiner can ask you about.</p>
+          <span class="mt-6 inline-flex items-center gap-2 font-bold text-sm bg-white/20 rounded-xl px-4 py-2.5 w-fit">Open Detective →</span>
+        </button>
         <button type="button" onclick="openStringQuest()" class="app-card group flex flex-col rounded-3xl bg-gradient-to-br from-emerald-500 to-teal-600 p-6 sm:p-7 text-white shadow-xl min-h-[280px] text-left">
           <div class="text-5xl mb-4">🎻</div><h2 class="text-2xl font-extrabold">String Quest</h2>
           <p class="mt-2 text-emerald-100 text-sm sm:text-base leading-relaxed flex-1">Read the note on the staff and find the string and finger — no numbers written on the page.</p>
@@ -788,6 +803,240 @@
   </main>
   </div><!-- /screen-game -->
 
+  <!-- ========== AURAL LAB: TEST SELECT ========== -->
+  <div id="screen-aural-levels" class="hidden min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-100 px-4 sm:px-6 lg:px-10 py-6">
+    <div class="max-w-6xl mx-auto">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <a href="#" onclick="showScreen('landing'); return false;"
+          class="text-sm font-bold text-blue-600 hover:text-blue-800">← All Apps</a>
+        <p id="aural-total-stars" class="text-sm font-bold text-amber-600"></p>
+      </div>
+      <header class="text-center mb-5">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-blue-700">👂 Aural Lab</h1>
+        <p class="mt-2 text-sm sm:text-base text-blue-600 font-medium max-w-2xl mx-auto">
+          The four Preliminary aural tests. At Preliminary each test is played <strong>once</strong> — so listen hard the first time.
+        </p>
+      </header>
+      <div id="aural-user-switcher" class="flex flex-wrap justify-center gap-2 mb-6"></div>
+      <div id="aural-level-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      <p class="text-center text-xs text-slate-500 font-medium mt-6 max-w-2xl mx-auto">
+        Tests 1–4 are the four Preliminary aural tests. Every example is generated fresh each time to the
+        specification AMEB publishes — so he practises the skill, not a memorised list.
+      </p>
+    </div>
+  </div>
+
+  <!-- ========== AURAL LAB: GAME ========== -->
+  <div id="screen-aural-game" class="hidden min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-100">
+    <main class="max-w-2xl mx-auto px-4 py-4 space-y-3">
+      <div class="flex items-center justify-between gap-3">
+        <button id="aural-btn-back"
+          class="px-3 py-1.5 rounded-xl bg-white border-2 border-blue-200 text-blue-700 font-bold text-xs shadow active:scale-95 transition-all">
+          ← Tests
+        </button>
+        <span id="aural-level-badge" class="px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-extrabold text-xs text-center"></span>
+        <p id="aural-player-label" class="text-xs font-bold text-blue-600"></p>
+      </div>
+
+      <div class="flex items-center justify-between gap-3">
+        <p id="aural-progress-label" class="text-sm font-extrabold text-slate-600"></p>
+        <div id="aural-score-dots" class="flex gap-1"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-lg border-2 border-blue-200 p-5 text-center">
+        <p id="aural-test-name" class="text-xs font-extrabold uppercase tracking-wide text-blue-400 mb-2"></p>
+        <p id="aural-instruction" class="text-sm sm:text-base font-bold text-slate-700 mb-4"></p>
+
+        <button id="aural-btn-play"
+          class="px-8 py-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-extrabold text-lg shadow-lg transition-all disabled:opacity-40 disabled:shadow-none disabled:cursor-default disabled:active:scale-100">
+          ▶ Play
+        </button>
+
+        <p id="aural-status" class="mt-3 text-sm font-extrabold min-h-[1.5rem] text-blue-600" aria-live="polite"></p>
+
+        <!-- Tap panel (Time and Rhythm tests) -->
+        <div id="aural-panel-tap" class="hidden mt-4">
+          <button id="aural-tap-pad"
+            class="w-full h-36 rounded-3xl bg-gradient-to-br from-sky-400 to-blue-600 text-white font-extrabold text-2xl shadow-xl active:scale-95 transition-transform select-none">
+            TAP
+          </button>
+          <p class="mt-2 text-xs text-slate-500 font-medium">Tap the pad or press the space bar</p>
+          <div id="aural-tap-timeline" class="mt-3"></div>
+        </div>
+
+        <!-- Multiple-choice panel, filled in by whichever test needs it -->
+        <div id="aural-panel-choice" class="hidden mt-4 space-y-2"></div>
+
+        <!-- Beats in a Bar: the tune revealed on the staff after answering -->
+        <div id="aural-panel-metre" class="hidden mt-4">
+          <p class="text-xs font-bold text-slate-500 mb-1">Here is the tune you just heard:</p>
+          <canvas id="aural-metre-canvas" class="w-full h-40 rounded-lg bg-white"></canvas>
+          <button id="aural-btn-metre-replay"
+            class="mt-2 w-full px-4 py-3 rounded-2xl bg-sky-500 hover:bg-sky-600 active:scale-95 text-white font-extrabold text-sm shadow transition-all">
+            🔊 Play it again while you watch
+          </button>
+        </div>
+
+        <!-- Sing panel -->
+        <div id="aural-panel-sing" class="hidden mt-4">
+          <p class="text-xs text-slate-500 font-medium mb-2">The examiner plays it through, then again one note at a time, waiting for you to sing each one.</p>
+          <button id="aural-btn-stepnote"
+            class="w-full px-4 py-3 rounded-2xl bg-sky-500 hover:bg-sky-600 active:scale-95 text-white font-extrabold shadow transition-all">
+            🎵 Play the next note
+          </button>
+          <div id="aural-sing-dots" class="flex justify-center gap-2 my-3"></div>
+          <canvas id="aural-staff-canvas" class="hidden w-full h-28 rounded-lg"></canvas>
+          <div class="flex gap-2 mt-3">
+            <button id="aural-btn-sang-yes" class="flex-1 px-3 py-3 rounded-2xl bg-emerald-500 text-white font-extrabold text-sm shadow active:scale-95">I matched them all</button>
+            <button id="aural-btn-sang-no" class="flex-1 px-3 py-3 rounded-2xl bg-white border-2 border-slate-300 text-slate-600 font-extrabold text-sm shadow active:scale-95">Not yet</button>
+          </div>
+          <button id="aural-btn-reveal" class="mt-2 text-xs font-bold text-blue-500 underline">Show me the notes</button>
+        </div>
+
+        <button id="aural-btn-again"
+          class="hidden mt-3 text-xs font-bold text-slate-400 underline">Play it again (the examiner only plays it once)</button>
+      </div>
+
+      <p id="aural-feedback" class="text-center text-sm font-bold min-h-[3rem] flex items-center justify-center px-2" aria-live="polite"></p>
+
+      <div class="flex justify-center pb-6">
+        <button id="aural-btn-next"
+          class="hidden px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-extrabold text-base shadow-lg transition-all">
+          Next →
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========== AURAL LAB: RESULTS ========== -->
+  <div id="screen-aural-results" class="hidden min-h-screen bg-gradient-to-br from-sky-50 via-blue-50 to-indigo-100 flex flex-col items-center justify-center px-4 py-8">
+    <div class="bg-white/95 rounded-3xl shadow-2xl border-2 border-blue-200 p-8 max-w-md w-full text-center">
+      <div class="text-6xl mb-2">👂</div>
+      <h2 id="aural-results-level" class="text-2xl sm:text-3xl font-extrabold text-blue-700"></h2>
+      <p id="aural-results-message" class="mt-2 text-sm text-slate-600 font-medium"></p>
+      <div id="aural-results-stars" class="flex justify-center gap-3 my-6 text-5xl"></div>
+      <p id="aural-results-stats" class="text-xs text-slate-500 font-medium mb-4"></p>
+      <div class="flex flex-col gap-3">
+        <button id="aural-btn-results-next"
+          class="px-6 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-extrabold shadow-lg transition-all">
+          Next Test →
+        </button>
+        <button id="aural-btn-results-retry"
+          class="px-6 py-3 rounded-2xl bg-white border-2 border-blue-300 text-blue-700 font-extrabold active:scale-95 transition-all">
+          Try Again
+        </button>
+        <button id="aural-btn-results-levels"
+          class="px-6 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold text-sm active:scale-95 transition-all">
+          All Tests
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== THEORY DETECTIVE: CASE SELECT ========== -->
+  <div id="screen-gk-levels" class="hidden min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-100 px-4 sm:px-6 lg:px-10 py-6">
+    <div class="max-w-6xl mx-auto">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <a href="#" onclick="showScreen('landing'); return false;"
+          class="text-sm font-bold text-orange-600 hover:text-orange-800">← All Apps</a>
+        <p id="gk-total-stars" class="text-sm font-bold text-amber-600"></p>
+      </div>
+      <header class="text-center mb-5">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-orange-700">🔍 Theory Detective</h1>
+        <p class="mt-2 text-sm sm:text-base text-orange-600 font-medium max-w-2xl mx-auto">
+          In the exam you get <strong>6 to 10 questions</strong>, at least one about each piece, asked straight from your own music.
+          Every question here comes from your three pieces.
+        </p>
+      </header>
+      <div id="gk-user-switcher" class="flex flex-wrap justify-center gap-2 mb-4"></div>
+      <div class="flex justify-center mb-6">
+        <button id="gk-btn-study" type="button"
+          class="px-5 py-2.5 rounded-2xl border-2 border-orange-300 bg-white text-orange-700 font-extrabold text-sm transition-all active:scale-95">
+          📖 Study Sheet
+        </button>
+      </div>
+      <div id="gk-level-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+  </div>
+
+  <!-- ========== THEORY DETECTIVE: STUDY SHEET ========== -->
+  <div id="screen-gk-study" class="hidden min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-100 px-4 sm:px-6 lg:px-10 py-6">
+    <div class="max-w-4xl mx-auto">
+      <div class="flex items-center justify-between gap-3 mb-4">
+        <button id="gk-btn-study-back"
+          class="px-3 py-1.5 rounded-xl bg-white border-2 border-orange-200 text-orange-700 font-bold text-xs shadow active:scale-95 transition-all">
+          ← Cases
+        </button>
+        <h1 class="text-xl sm:text-2xl font-extrabold text-orange-700">📖 Study Sheet</h1>
+        <span class="w-16"></span>
+      </div>
+      <p class="text-center text-xs text-slate-500 font-medium mb-5">Everything the examiner can point at in your music.</p>
+      <div id="gk-study-content" class="space-y-6 pb-10"></div>
+    </div>
+  </div>
+
+  <!-- ========== THEORY DETECTIVE: GAME ========== -->
+  <div id="screen-gk-game" class="hidden min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-100">
+    <main class="max-w-2xl mx-auto px-4 py-4 space-y-3">
+      <div class="flex items-center justify-between gap-3">
+        <button id="gk-btn-back"
+          class="px-3 py-1.5 rounded-xl bg-white border-2 border-orange-200 text-orange-700 font-bold text-xs shadow active:scale-95 transition-all">
+          ← Cases
+        </button>
+        <span id="gk-level-badge" class="px-3 py-1 rounded-full bg-orange-100 text-orange-700 font-extrabold text-xs text-center"></span>
+        <p id="gk-player-label" class="text-xs font-bold text-orange-600"></p>
+      </div>
+
+      <div class="flex items-center justify-between gap-3">
+        <p id="gk-progress-label" class="text-sm font-extrabold text-slate-600"></p>
+        <div id="gk-score-dots" class="flex gap-1"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-lg border-2 border-orange-200 p-5 text-center">
+        <p id="gk-piece-badge" class="text-xs font-extrabold uppercase tracking-wide text-orange-400 mb-3"></p>
+        <div id="gk-prompt" class="gk-glyph min-h-[5rem] flex items-center justify-center mb-3"></div>
+        <p id="gk-question" class="text-base sm:text-lg font-extrabold text-slate-700"></p>
+      </div>
+
+      <div id="gk-answers" class="space-y-2"></div>
+
+      <p id="gk-feedback" class="text-center text-sm font-bold min-h-[3rem] flex items-center justify-center px-2" aria-live="polite"></p>
+
+      <div class="flex justify-center pb-6">
+        <button id="gk-btn-next"
+          class="hidden px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-extrabold text-base shadow-lg transition-all">
+          Next Question →
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========== THEORY DETECTIVE: RESULTS ========== -->
+  <div id="screen-gk-results" class="hidden min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-100 flex flex-col items-center justify-center px-4 py-8">
+    <div class="bg-white/95 rounded-3xl shadow-2xl border-2 border-orange-200 p-8 max-w-md w-full text-center">
+      <div class="text-6xl mb-2">🔍</div>
+      <h2 id="gk-results-level" class="text-2xl sm:text-3xl font-extrabold text-orange-700"></h2>
+      <p id="gk-results-message" class="mt-2 text-sm text-slate-600 font-medium"></p>
+      <div id="gk-results-stars" class="flex justify-center gap-3 my-6 text-5xl"></div>
+      <p id="gk-results-stats" class="text-xs text-slate-500 font-medium mb-2"></p>
+      <div id="gk-results-missed" class="text-xs text-slate-600 font-medium mb-6 text-left"></div>
+      <div class="flex flex-col gap-3">
+        <button id="gk-btn-results-next"
+          class="px-6 py-3 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-extrabold shadow-lg transition-all">
+          Next Case →
+        </button>
+        <button id="gk-btn-results-retry"
+          class="px-6 py-3 rounded-2xl bg-white border-2 border-orange-300 text-orange-700 font-extrabold active:scale-95 transition-all">
+          Try Again
+        </button>
+        <button id="gk-btn-results-levels"
+          class="px-6 py-3 rounded-2xl bg-slate-100 text-slate-600 font-bold text-sm active:scale-95 transition-all">
+          All Cases
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== STRING QUEST: LEVEL SELECT ========== -->
   <div id="screen-violin-levels" class="hidden min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-sky-100 px-4 sm:px-6 lg:px-10 py-6">
     <div class="max-w-6xl mx-auto">
@@ -1189,6 +1438,13 @@
     const screenViolinLevels = document.getElementById('screen-violin-levels');
     const screenViolinGame = document.getElementById('screen-violin-game');
     const screenViolinResults = document.getElementById('screen-violin-results');
+    const screenGkLevels = document.getElementById('screen-gk-levels');
+    const screenGkGame = document.getElementById('screen-gk-game');
+    const screenGkResults = document.getElementById('screen-gk-results');
+    const screenGkStudy = document.getElementById('screen-gk-study');
+    const screenAuralLevels = document.getElementById('screen-aural-levels');
+    const screenAuralGame = document.getElementById('screen-aural-game');
+    const screenAuralResults = document.getElementById('screen-aural-results');
 
     const levelCardsGrid = document.getElementById('level-cards-grid');
     const barNavSection = document.getElementById('bar-nav-section');
@@ -2377,6 +2633,8 @@
         USERS.forEach(u => {
           if (!data.users[u.id]) data.users[u.id] = { stars: {} };
           if (!data.users[u.id].violinStars) data.users[u.id].violinStars = {};
+          if (!data.users[u.id].gkStars) data.users[u.id].gkStars = {};
+          if (!data.users[u.id].auralStars) data.users[u.id].auralStars = {};
         });
         return data;
       } catch { return defaultAppData(); }
@@ -2503,7 +2761,15 @@
       screenViolinLevels.classList.toggle('hidden', name !== 'violin-levels');
       screenViolinGame.classList.toggle('hidden', name !== 'violin-game');
       screenViolinResults.classList.toggle('hidden', name !== 'violin-results');
+      screenGkLevels.classList.toggle('hidden', name !== 'gk-levels');
+      screenGkGame.classList.toggle('hidden', name !== 'gk-game');
+      screenGkResults.classList.toggle('hidden', name !== 'gk-results');
+      screenGkStudy.classList.toggle('hidden', name !== 'gk-study');
+      screenAuralLevels.classList.toggle('hidden', name !== 'aural-levels');
+      screenAuralGame.classList.toggle('hidden', name !== 'aural-game');
+      screenAuralResults.classList.toggle('hidden', name !== 'aural-results');
       if (name !== 'violin-game' && typeof violinExit === 'function') violinExit();
+      if (name !== 'aural-game' && typeof auralExit === 'function') auralExit();
       if (name === 'notes') {
         if (typeof notesStopRhythm === 'function') notesStopRhythm();
         if (typeof notesResetAll === 'function') notesResetAll();
@@ -3274,6 +3540,1427 @@ function explorerExploreNote(type, beats, name) {
     }
 
     
+
+    // ==================================================================
+    // AURAL LAB — the four AMEB Preliminary aural tests
+    //
+    // Specifications taken from the published syllabus:
+    //  TIME    clap the beats of chord passages in 2- or 3-beat time at
+    //          slow/moderate/quick speeds, and keep going after the music stops
+    //  RHYTHM  clap or tap the note values of a two-bar passage
+    //  PITCH   sing a phrase of five or six notes of one beat length; the
+    //          examiner plays it, then repeats it waiting on each note
+    //  PITCH   state which of two notes played separately is higher or lower,
+    //          not less than a third apart
+    //
+    // Examples are generated fresh to that spec rather than copied from the
+    // AMEB book — so he practises the skill and cannot memorise a fixed set.
+    // At Preliminary every test is played ONCE (all other grades get twice).
+    // ==================================================================
+
+    const AURAL_LEVELS = [
+      { id: 1, test: 'time', tag: 'TEST 1', name: 'Test 1 · Time', emoji: '🥁', rounds: 4,
+        description: 'Clap the beat — and keep clapping when the music stops.' },
+      { id: 2, test: 'rhythm', tag: 'TEST 2', name: 'Test 2 · Rhythm', emoji: '👏', rounds: 5,
+        description: 'Listen to two bars, then clap the note values back.' },
+      { id: 3, test: 'sing', tag: 'TEST 3', name: 'Test 3 · Sing the Phrase', emoji: '🎤', rounds: 4,
+        description: 'Sing back five or six notes. You mark this one yourself.' },
+      { id: 4, test: 'highlow', tag: 'TEST 4', name: 'Test 4 · Higher or Lower', emoji: '↕️', rounds: 8,
+        description: 'Two notes, a third or more apart. Which was which?' },
+      { id: 5, test: 'full', tag: 'EXAM', name: 'Full Aural Test', emoji: '🎓', rounds: 4,
+        description: 'One of each of the four tests, in the examiner\'s order.' },
+      // Separate on purpose: naming the metre is NOT in the Preliminary syllabus
+      // (it appears at Grade 3). Kept apart so it can simply be left alone if the
+      // teacher confirms it is not required, without touching the four real tests.
+      { id: 6, test: 'metre', tag: 'EXTRA', name: 'Beats in a Bar', emoji: '❓', rounds: 6,
+        unconfirmed: true,
+        description: 'A tune plays — say whether there are 2 or 3 beats in a bar.' },
+    ];
+
+    // --- State ---
+    let auralLevelId = 1;
+    let auralRound = 0;
+    let auralResults = [];
+    let auralCurrent = null;
+    let auralTaps = [];
+    let auralExpected = [];
+    let auralTimers = [];
+    let auralPhase = 'idle';   // idle | playing | responding | done
+    let auralReplayed = false;
+    let auralSingStep = 0;
+    let auralPlayBtnMode = 'play';   // 'play' | 'done' (Rhythm test)
+
+    const auralPlayBtn = document.getElementById('aural-btn-play');
+    const auralStatusEl = document.getElementById('aural-status');
+    const auralFeedbackEl = document.getElementById('aural-feedback');
+    const auralNextBtn = document.getElementById('aural-btn-next');
+    const auralTapPad = document.getElementById('aural-tap-pad');
+    const auralAgainBtn = document.getElementById('aural-btn-again');
+    const auralStaffCanvas = document.getElementById('aural-staff-canvas');
+
+    function auralGetLevel(id = auralLevelId) {
+      return AURAL_LEVELS.find(l => l.id === id) || AURAL_LEVELS[0];
+    }
+
+    function auralMidiToFreq(midi) {
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    function auralPlayMidi(midi, at, dur) {
+      playTone(audioCtx, auralMidiToFreq(midi), at, dur);
+    }
+
+    function auralPlayChord(midis, at, dur) {
+      midis.forEach(m => auralPlayMidi(m, at, dur));
+    }
+
+    function auralClearTimers() {
+      auralTimers.forEach(clearTimeout);
+      auralTimers = [];
+    }
+
+    /** Schedule a UI callback against the audio clock. */
+    function auralAt(audioTime, fn) {
+      const ms = Math.max(0, (audioTime - audioCtx.currentTime) * 1000);
+      auralTimers.push(setTimeout(fn, ms));
+    }
+
+    // ---------- Test generators ----------
+    function auralMakeTime() {
+      const speeds = [['slow', 63], ['moderate', 92], ['quick', 138]];
+      const [speedName, bpm] = speeds[randomInt(0, speeds.length - 1)];
+      return {
+        kind: 'time',
+        beatsPerBar: Math.random() < 0.5 ? 2 : 3,
+        bpm, speedName, playedBars: 4, silentBars: 4,
+      };
+    }
+
+    // Bar patterns in quaver units: 8 units = 4/4, 6 = 3/4 and 6/8.
+    const AURAL_BAR_PATTERNS = {
+      '4/4': [[2,2,2,2],[4,2,2],[2,2,4],[1,1,2,2,2],[2,1,1,2,2],[2,2,1,1,2],[4,4],[3,1,2,2],[2,2,2,1,1]],
+      '3/4': [[2,2,2],[4,2],[2,4],[1,1,2,2],[2,1,1,2],[2,2,1,1],[6],[3,1,2]],
+      '6/8': [[3,3],[1,1,1,3],[3,1,1,1],[2,1,3],[1,1,1,1,1,1],[3,2,1]],
+    };
+
+    function auralMakeRhythm() {
+      const sig = ['4/4', '3/4', '6/8'][randomInt(0, 2)];
+      const pats = AURAL_BAR_PATTERNS[sig];
+      const units = [...pats[randomInt(0, pats.length - 1)], ...pats[randomInt(0, pats.length - 1)]];
+      const unitSec = sig === '6/8' ? 0.26 : 0.30;
+
+      // A simple stepwise tune so it sounds like music, not a metronome.
+      const scale = [60, 62, 64, 65, 67, 69, 71, 72];
+      let idx = randomInt(1, 4);
+      const pitches = units.map(() => {
+        idx = Math.max(0, Math.min(scale.length - 1, idx + [-2, -1, -1, 0, 1, 1, 2][randomInt(0, 6)]));
+        return scale[idx];
+      });
+      return { kind: 'rhythm', sig, units, unitSec, pitches };
+    }
+
+    function auralMakeSing() {
+      const len = Math.random() < 0.5 ? 5 : 6;
+      const scale = [60, 62, 64, 65, 67, 69, 71];
+      let idx = randomInt(0, 3);
+      const notes = [scale[idx]];
+      for (let i = 1; i < len; i++) {
+        idx = Math.max(0, Math.min(scale.length - 1, idx + [-2, -1, -1, 1, 1, 2][randomInt(0, 5)]));
+        notes.push(scale[idx]);
+      }
+      return { kind: 'sing', notes };
+    }
+
+    /**
+     * Extra exercise: hear a tune and name the metre. Not a Preliminary
+     * requirement. The tune is built here rather than during playback so the
+     * same notes can be drawn on the staff afterwards.
+     */
+    function auralMakeMetre() {
+      const beatsPerBar = Math.random() < 0.5 ? 2 : 3;
+      const bars = 4;
+      const scale = [60, 62, 64, 65, 67, 69, 71, 72];
+      let idx = randomInt(2, 5);
+      const notes = [];
+      for (let i = 0; i < bars * beatsPerBar; i++) {
+        idx = Math.max(0, Math.min(scale.length - 1, idx + [-2, -1, -1, 1, 1, 2][randomInt(0, 5)]));
+        notes.push(scale[idx]);
+      }
+      return {
+        kind: 'metre', beatsPerBar, bars, notes,
+        bpm: [76, 96, 120][randomInt(0, 2)],
+        timeSig: `${beatsPerBar}/4`,
+      };
+    }
+
+    function auralMakeHighLow() {
+      const first = randomInt(60, 76);
+      // "Not less than a third apart" — a third is 3 semitones, so never closer.
+      const gap = randomInt(3, 12);
+      const second = (Math.random() < 0.5 && first - gap >= 55) ? first - gap : first + gap;
+      return { kind: 'highlow', first, second, askHigher: Math.random() < 0.5 };
+    }
+
+    function auralMakeRound(test) {
+      if (test === 'time') return auralMakeTime();
+      if (test === 'rhythm') return auralMakeRhythm();
+      if (test === 'sing') return auralMakeSing();
+      if (test === 'metre') return auralMakeMetre();
+      return auralMakeHighLow();
+    }
+
+    const AURAL_TEST_INFO = {
+      time:    { label: 'Test 1 · Time', instruction: 'Clap the beat while it plays — then keep clapping in time after it stops.' },
+      rhythm:  { label: 'Test 2 · Rhythm', instruction: 'Listen to the two bars, then tap back the note values.' },
+      sing:    { label: 'Test 3 · Pitch', instruction: 'Listen to the phrase, then sing or hum it back.' },
+      highlow: { label: 'Test 4 · Pitch', instruction: 'Two notes, played one after the other.' },
+      metre:   { label: 'Extra · Beats in a Bar', instruction: 'Listen to the tune, then say how many beats are in each bar.' },
+    };
+
+    // ---------- Running a round ----------
+    function auralShowRound() {
+      auralClearTimers();
+      auralPhase = 'idle';
+      auralTaps = [];
+      auralExpected = [];
+      auralReplayed = false;
+      auralSingStep = 0;
+
+      const level = auralGetLevel();
+      const test = level.test === 'full'
+        ? ['time', 'rhythm', 'sing', 'highlow'][auralRound]
+        : level.test;
+      auralCurrent = auralMakeRound(test);
+      auralCurrent.test = test;
+
+      document.getElementById('aural-test-name').textContent = AURAL_TEST_INFO[test].label;
+      document.getElementById('aural-instruction').textContent = AURAL_TEST_INFO[test].instruction;
+      document.getElementById('aural-progress-label').textContent =
+        `${auralRound + 1} of ${level.rounds}`;
+
+      auralPlayBtn.classList.remove('hidden');
+      auralPlayBtn.disabled = false;
+      auralPlayBtn.textContent = '▶ Play';
+      auralPlayBtnMode = 'play';
+      auralStatusEl.textContent = '';
+      auralFeedbackEl.textContent = '';
+      auralNextBtn.classList.add('hidden');
+      auralAgainBtn.classList.add('hidden');
+      document.getElementById('aural-panel-tap').classList.add('hidden');
+      document.getElementById('aural-panel-sing').classList.add('hidden');
+      document.getElementById('aural-panel-metre').classList.add('hidden');
+      // Empty the choice panel, not just hide it: leftover buttons from the last
+      // round stay clickable and still carry the previous round's answer.
+      const choicePanel = document.getElementById('aural-panel-choice');
+      choicePanel.classList.add('hidden');
+      choicePanel.innerHTML = '';
+      document.getElementById('aural-tap-timeline').innerHTML = '';
+      auralStaffCanvas.classList.add('hidden');
+      auralUpdateScoreDots();
+    }
+
+    function auralStartPlayback() {
+      if (!ensureBeatsAudio() || !audioCtx) {
+        auralStatusEl.textContent = 'Tap Play again to turn the sound on.';
+        return;
+      }
+      auralClearTimers();
+      auralPhase = 'playing';
+      auralPlayBtn.disabled = true;
+      const q = auralCurrent;
+      if (q.test === 'time') auralRunTime(q);
+      else if (q.test === 'rhythm') auralRunRhythm(q);
+      else if (q.test === 'sing') auralRunSing(q);
+      else if (q.test === 'metre') auralRunMetre(q);
+      else auralRunHighLow(q);
+    }
+
+    /**
+     * Plays a short tune with a bass note on the first beat of each bar — the
+     * same cue a pianist gives naturally — then asks for the metre.
+     */
+    const AURAL_METRE_BASSES = [[48, 55, 64], [47, 55, 62], [48, 53, 65], [43, 55, 62]];
+
+    /** Plays the tune; returns the audio time it finishes. */
+    function auralPlayMetreTune(q, startDelay = 0.6) {
+      const beat = 60 / q.bpm;
+      const t0 = audioCtx.currentTime + startDelay;
+      q.notes.forEach((midi, i) => {
+        const at = t0 + i * beat;
+        // A bass note on the first beat of each bar — the cue a pianist gives.
+        if (i % q.beatsPerBar === 0) {
+          auralPlayChord(AURAL_METRE_BASSES[(i / q.beatsPerBar) % AURAL_METRE_BASSES.length], at, beat * 0.85);
+        }
+        auralPlayMidi(midi, at, beat * 0.7);
+      });
+      return t0 + q.notes.length * beat;
+    }
+
+    function auralRunMetre(q) {
+      const endAt = auralPlayMetreTune(q);
+      auralStatusEl.textContent = '🎵 Listen to the tune…';
+      auralAt(endAt + 0.35, () => {
+        auralPhase = 'responding';
+        auralStatusEl.textContent = 'How many beats were in each bar?';
+        auralShowChoices(
+          [{ label: '2 beats in a bar', value: 2 }, { label: '3 beats in a bar', value: 3 }],
+          q.beatsPerBar,
+          (choice, pass) => {
+            // Shown whether he was right or wrong — a wrong guess is exactly
+            // when seeing the bar lines explains the answer.
+            auralRevealMetre(q);
+            auralRecord(pass, pass
+              ? `Yes — ${q.beatsPerBar} beats in a bar. Look at the notes between each bar line.`
+              : `It was ${q.beatsPerBar} beats in a bar. Count the notes between the bar lines below.`);
+          });
+      });
+    }
+
+    /** Draw the tune he just heard, with bar lines, time signature and beat numbers. */
+    function auralRevealMetre(q) {
+      const panel = document.getElementById('aural-panel-metre');
+      panel.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        auralDrawStaffCanvas(document.getElementById('aural-metre-canvas'), q.notes, {
+          beatsPerBar: q.beatsPerBar,
+          timeSig: q.timeSig,
+          beatNumbers: true,
+        });
+      });
+    }
+
+    function auralRunTime(q) {
+      const beat = 60 / q.bpm;
+      const t0 = audioCtx.currentTime + 0.7;
+      const totalBeats = (q.playedBars + q.silentBars) * q.beatsPerBar;
+      const playedBeats = q.playedBars * q.beatsPerBar;
+      auralExpected = Array.from({ length: totalBeats }, (_, i) => t0 + i * beat);
+
+      const chords = [[60, 64, 67], [59, 62, 67], [60, 65, 69], [59, 62, 67]];
+      for (let b = 0; b < q.playedBars; b++) {
+        const ch = chords[b % chords.length];
+        for (let k = 0; k < q.beatsPerBar; k++) {
+          const at = t0 + (b * q.beatsPerBar + k) * beat;
+          // A bass note on beat 1 makes the pulse audible without changing volume.
+          auralPlayChord(k === 0 ? [...ch, ch[0] - 12] : ch, at, beat * 0.55);
+        }
+      }
+
+      document.getElementById('aural-panel-tap').classList.remove('hidden');
+      auralStatusEl.textContent = `Get ready — ${q.speedName} speed, ${q.beatsPerBar} beats in a bar`;
+      auralAt(t0, () => { auralPhase = 'responding'; auralStatusEl.textContent = '🎵 Clap the beat!'; });
+      auralAt(t0 + playedBeats * beat, () => {
+        auralStatusEl.textContent = '🤫 Music stopped — KEEP GOING!';
+      });
+      auralAt(t0 + totalBeats * beat + beat * 0.8, () => auralFinishTime(q));
+    }
+
+    /**
+     * Match each expected beat to its own nearest unused tap, so one tap can't
+     * satisfy two beats and surplus taps are counted as extras. Without that,
+     * tapping the rhythm at double speed would score as a perfect beat.
+     */
+    function auralMatchTaps(expected, taps, tol) {
+      const used = new Set();
+      const matched = [];
+      expected.forEach((t, i) => {
+        let bestIdx = -1, bestDist = Infinity;
+        taps.forEach((tap, j) => {
+          if (used.has(j)) return;
+          const d = Math.abs(tap - t);
+          if (d < bestDist) { bestDist = d; bestIdx = j; }
+        });
+        if (bestIdx >= 0 && bestDist <= tol) { used.add(bestIdx); matched.push(i); }
+      });
+      return { matched, extras: taps.length - used.size };
+    }
+
+    function auralFinishTime(q) {
+      const beat = 60 / q.bpm;
+      const tol = beat * 0.35;
+      const playedBeats = q.playedBars * q.beatsPerBar;
+      const silentBeats = auralExpected.length - playedBeats;
+      const { matched, extras } = auralMatchTaps(auralExpected, auralTaps, tol);
+      const hitsPlayed = matched.filter(i => i < playedBeats).length;
+      const hitsSilent = matched.length - hitsPlayed;
+
+      const tooManyTaps = extras > auralExpected.length * 0.25;
+      const pass = hitsPlayed / playedBeats >= 0.6
+        && hitsSilent / silentBeats >= 0.6
+        && !tooManyTaps;
+
+      let msg;
+      if (pass) {
+        msg = `Well done — you kept the beat for ${hitsSilent} of ${silentBeats} beats after the music stopped.`;
+      } else if (tooManyTaps) {
+        msg = `That was ${extras} extra taps — you were tapping the tune, not the beat. Tap only on the steady pulse: ${q.beatsPerBar} per bar.`;
+      } else {
+        msg = `You got ${hitsPlayed}/${playedBeats} beats with the music and ${hitsSilent}/${silentBeats} after it stopped. Keeping going is the tricky bit — try counting out loud.`;
+      }
+      auralRecord(pass, msg);
+    }
+
+    function auralRunRhythm(q) {
+      const t0 = audioCtx.currentTime + 0.7;
+      let t = t0;
+      const onsets = [];
+      q.units.forEach((u, i) => {
+        onsets.push(t);
+        auralPlayMidi(q.pitches[i], t, Math.max(0.12, u * q.unitSec * 0.85));
+        t += u * q.unitSec;
+      });
+      q.onsets = onsets;
+      const endAt = t;
+
+      auralStatusEl.textContent = `🎵 Listen — ${q.sig}`;
+      auralAt(endAt + 0.3, () => {
+        auralPhase = 'responding';
+        document.getElementById('aural-panel-tap').classList.remove('hidden');
+        auralAgainBtn.classList.remove('hidden');
+        auralStatusEl.textContent = '👏 Now tap it back — press Done when finished';
+        auralPlayBtn.textContent = '✓ Done';
+        auralPlayBtn.disabled = false;
+        auralPlayBtnMode = 'done';
+      });
+    }
+
+    function auralFinishRhythm(q) {
+      auralClearTimers();
+      auralPlayBtn.disabled = true;
+      const expectedRel = q.onsets.map(t => t - q.onsets[0]);
+      if (auralTaps.length === 0) {
+        auralRecord(false, 'No taps picked up that time. Tap the blue pad once for every note.');
+        return;
+      }
+      const tapsRel = auralTaps.map(t => t - auralTaps[0]);
+      const tol = q.unitSec * 1.3;
+      let hits = 0;
+      expectedRel.forEach((e, i) => {
+        if (tapsRel[i] != null && Math.abs(tapsRel[i] - e) <= tol) hits++;
+      });
+      const countOk = tapsRel.length === expectedRel.length;
+      const pass = countOk && hits / expectedRel.length >= 0.7 && !auralReplayed;
+      auralRenderTimeline(expectedRel, tapsRel, tol);
+      let msg;
+      if (!countOk) {
+        msg = `There were ${expectedRel.length} notes and you tapped ${tapsRel.length}. Listen for how many sounds you hear.`;
+      } else if (hits / expectedRel.length >= 0.7) {
+        msg = auralReplayed
+          ? `All ${hits} right — but you needed it played twice. In the exam you only get it once.`
+          : `Spot on — ${hits} of ${expectedRel.length} notes in the right place.`;
+      } else {
+        msg = `Right number of notes, but the long and short ones drifted — ${hits} of ${expectedRel.length} landed in time.`;
+      }
+      auralRecord(pass, msg);
+    }
+
+    /** Expected note placement over the taps he actually made. */
+    function auralRenderTimeline(expected, taps, tol) {
+      const span = Math.max(...expected, ...taps, 0.1) * 1.05;
+      const row = (vals, colour, label) => `
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[0.6rem] font-bold text-slate-400 w-14 text-right">${label}</span>
+          <div class="relative flex-1 h-5 bg-slate-100 rounded">
+            ${vals.map(v => `<span class="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full ${colour}" style="left:calc(${(v / span) * 100}% - 5px)"></span>`).join('')}
+          </div>
+        </div>`;
+      document.getElementById('aural-tap-timeline').innerHTML =
+        row(expected, 'bg-blue-500', 'the tune') + row(taps, 'bg-amber-500', 'your taps');
+    }
+
+    function auralRunSing(q) {
+      const t0 = audioCtx.currentTime + 0.6;
+      q.notes.forEach((m, i) => auralPlayMidi(m, t0 + i * 0.75, 0.6));
+      const endAt = t0 + q.notes.length * 0.75;
+      auralStatusEl.textContent = '🎵 Listen to the whole phrase';
+      auralAt(endAt + 0.2, () => {
+        auralPhase = 'responding';
+        auralStatusEl.textContent = '🎤 Now sing it back, one note at a time';
+        document.getElementById('aural-panel-sing').classList.remove('hidden');
+        auralRenderSingDots();
+      });
+    }
+
+    function auralRenderSingDots() {
+      const q = auralCurrent;
+      document.getElementById('aural-sing-dots').innerHTML = q.notes.map((_, i) =>
+        `<span class="w-3 h-3 rounded-full ${i < auralSingStep ? 'bg-sky-500' : 'bg-slate-300'}"></span>`).join('');
+    }
+
+    function auralStepNote() {
+      const q = auralCurrent;
+      if (!ensureBeatsAudio() || !audioCtx) return;
+      if (auralSingStep >= q.notes.length) {
+        auralStatusEl.textContent = 'That was the last note — how did you go?';
+        return;
+      }
+      auralPlayMidi(q.notes[auralSingStep], audioCtx.currentTime + 0.05, 1.0);
+      auralSingStep++;
+      auralRenderSingDots();
+      auralStatusEl.textContent = `Note ${auralSingStep} of ${q.notes.length} — sing it`;
+    }
+
+    /** Render a multiple-choice question; `onPick(value, correct)` runs once. */
+    function auralShowChoices(options, correctValue, onPick) {
+      const panel = document.getElementById('aural-panel-choice');
+      const base = 'aural-choice w-full px-4 py-4 rounded-2xl bg-white border-2 border-blue-300 text-blue-700 font-extrabold text-lg shadow active:scale-95 transition-all';
+      panel.innerHTML = '';
+      panel.classList.remove('hidden');
+      options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = base;
+        btn.textContent = opt.label;
+        btn.addEventListener('click', () => {
+          if (btn.disabled) return;
+          panel.querySelectorAll('.aural-choice').forEach(b => {
+            b.disabled = true;
+            if (b.dataset.value === String(correctValue)) {
+              b.className = 'aural-choice w-full px-4 py-4 rounded-2xl bg-emerald-500 border-2 border-emerald-600 text-white font-extrabold text-lg shadow';
+            } else if (b === btn) {
+              b.className = 'aural-choice w-full px-4 py-4 rounded-2xl bg-rose-500 border-2 border-rose-600 text-white font-extrabold text-lg shadow';
+            }
+          });
+          onPick(opt.value, opt.value === correctValue);
+        });
+        btn.dataset.value = String(opt.value);
+        panel.appendChild(btn);
+      });
+    }
+
+    function auralRunHighLow(q) {
+      const t0 = audioCtx.currentTime + 0.6;
+      auralPlayMidi(q.first, t0, 1.0);
+      auralPlayMidi(q.second, t0 + 1.4, 1.0);
+      auralStatusEl.textContent = '🎵 Listen…';
+      auralAt(t0 + 2.6, () => {
+        auralPhase = 'responding';
+        auralStatusEl.textContent = q.askHigher ? 'Which note was HIGHER?' : 'Which note was LOWER?';
+        const secondIsHigher = q.second > q.first;
+        const correct = q.askHigher
+          ? (secondIsHigher ? 'second' : 'first')
+          : (secondIsHigher ? 'first' : 'second');
+        auralShowChoices(
+          [{ label: 'The 1st note', value: 'first' }, { label: 'The 2nd note', value: 'second' }],
+          correct,
+          (choice, pass) => {
+            const gap = Math.abs(q.second - q.first);
+            auralRecord(pass, pass
+              ? `Yes — the ${correct === 'first' ? '1st' : '2nd'} note was ${q.askHigher ? 'higher' : 'lower'}.`
+              : `The ${correct === 'first' ? '1st' : '2nd'} note was the ${q.askHigher ? 'higher' : 'lower'} one — they were ${gap} semitones apart.`);
+          });
+      });
+    }
+
+    // ---------- Scoring and flow ----------
+    function auralRecord(pass, message) {
+      auralClearTimers();
+      auralPhase = 'done';
+      auralPlayBtn.classList.add('hidden');
+      auralAgainBtn.classList.add('hidden');
+      auralStatusEl.textContent = '';
+      auralResults.push({ test: auralCurrent.test, pass });
+      auralFeedbackEl.className = `text-center text-sm font-bold min-h-[3rem] flex items-center justify-center px-2 ${pass ? 'text-emerald-600' : 'text-rose-600'}`;
+      auralFeedbackEl.textContent = message;
+      auralNextBtn.classList.remove('hidden');
+      auralUpdateScoreDots();
+    }
+
+    function auralUpdateScoreDots() {
+      const level = auralGetLevel();
+      const el = document.getElementById('aural-score-dots');
+      el.innerHTML = Array.from({ length: level.rounds }, (_, i) => {
+        const r = auralResults[i];
+        const colour = !r ? 'bg-slate-300' : r.pass ? 'bg-emerald-500' : 'bg-rose-400';
+        return `<span class="w-2.5 h-2.5 rounded-full ${colour}"></span>`;
+      }).join('');
+    }
+
+    function auralNext() {
+      auralRound++;
+      if (auralRound >= auralGetLevel().rounds) { auralFinish(); return; }
+      auralShowRound();
+    }
+
+    function auralStartLevel(id) {
+      auralLevelId = id;
+      auralRound = 0;
+      auralResults = [];
+      const level = auralGetLevel();
+      document.getElementById('aural-level-badge').textContent = `${level.emoji} ${level.name}`;
+      const user = getCurrentUser();
+      document.getElementById('aural-player-label').textContent = `${user.emoji} ${user.name}`;
+      showScreen('aural-game');
+      auralShowRound();
+    }
+
+    function auralFinish() {
+      auralClearTimers();
+      const level = auralGetLevel();
+      const wrong = auralResults.filter(r => !r.pass).length;
+      const stars = wrong === 0 ? 3 : wrong <= 1 ? 3 : wrong <= Math.ceil(level.rounds / 2) ? 2 : 1;
+      const prevBest = auralGetLevelStars(level.id);
+      auralSaveLevelStars(level.id, stars);
+
+      document.getElementById('aural-results-level').textContent = `${level.emoji} ${level.name}`;
+      const msg = stars === 3 ? 'Excellent listening!' : stars === 2 ? 'Good — keep practising!' : 'Ears need a workout — go again!';
+      document.getElementById('aural-results-message').textContent =
+        prevBest > 0 && stars > prevBest ? `${msg} New best!` : msg;
+      document.getElementById('aural-results-stars').innerHTML = [1, 2, 3].map((i, idx) =>
+        `<span class="star-pop ${idx === 1 ? 'star-pop-delay-1' : idx === 2 ? 'star-pop-delay-2' : ''} ${i <= stars ? 'text-amber-400' : 'text-slate-200'}">★</span>`
+      ).join('');
+      const singCount = auralResults.filter(r => r.test === 'sing').length;
+      document.getElementById('aural-results-stats').innerHTML =
+        `${auralResults.length - wrong} of ${auralResults.length} correct` +
+        (singCount ? `<br><span class="text-slate-400">(${singCount} sung ${singCount === 1 ? 'test' : 'tests'} marked by you, not by the app)</span>` : '');
+      document.getElementById('aural-btn-results-next').classList.toggle(
+        'hidden', !AURAL_LEVELS.some(l => l.id === level.id + 1));
+      showScreen('aural-results');
+      if (stars === 3 && typeof confetti === 'function') {
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+      }
+    }
+
+    // ---------- Progress ----------
+    function auralGetLevelStars(levelId) {
+      return loadAppData().users[currentUserId]?.auralStars?.[levelId] || 0;
+    }
+
+    function auralSaveLevelStars(levelId, stars) {
+      const data = loadAppData();
+      const u = data.users[currentUserId];
+      if (!u.auralStars) u.auralStars = {};
+      u.auralStars[levelId] = Math.max(u.auralStars[levelId] || 0, stars);
+      saveAppData(data);
+    }
+
+    function auralGetTotalStars() {
+      const s = loadAppData().users[currentUserId]?.auralStars || {};
+      return AURAL_LEVELS.reduce((sum, l) => sum + (s[l.id] || 0), 0);
+    }
+
+    // ---------- Test select ----------
+    function auralRenderLevelSelect() {
+      const el = document.getElementById('aural-user-switcher');
+      el.innerHTML = '';
+      USERS.forEach(user => {
+        const btn = document.createElement('button');
+        const active = user.id === currentUserId;
+        btn.className = `px-4 py-2 rounded-xl text-sm font-extrabold border-2 transition-all active:scale-95 ${
+          active ? 'border-blue-500 bg-blue-100 text-blue-700 shadow-[0_0_0_4px_rgba(59,130,246,0.25)]'
+                 : 'border-slate-200 bg-white text-slate-600 hover:border-blue-200'}`;
+        btn.textContent = `${user.emoji} ${user.name}`;
+        btn.addEventListener('click', () => {
+          if (user.id !== currentUserId) { setCurrentUser(user.id); auralRenderLevelSelect(); }
+        });
+        el.appendChild(btn);
+      });
+
+      const user = getCurrentUser();
+      document.getElementById('aural-total-stars').textContent =
+        `${user.name}: ${auralGetTotalStars()} of ${AURAL_LEVELS.length * 3} stars`;
+
+      const grid = document.getElementById('aural-level-grid');
+      grid.innerHTML = '';
+      AURAL_LEVELS.forEach(level => {
+        const stars = auralGetLevelStars(level.id);
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = `level-card text-left rounded-2xl bg-white/95 border-2 p-4 shadow-lg active:scale-95 ${
+          level.unconfirmed ? 'border-dashed border-slate-300' : 'border-blue-200'}`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold ${level.unconfirmed ? 'text-slate-400' : 'text-blue-500'}">${level.tag}</span>
+            <span class="text-2xl">${level.emoji}</span>
+          </div>
+          <p class="mt-1 text-lg font-extrabold text-slate-700">${level.name}</p>
+          <p class="mt-1 text-xs text-slate-500 font-medium min-h-[2.5rem]">${level.description}</p>
+          ${level.unconfirmed ? `<p class="mt-1 text-[0.65rem] font-bold text-amber-600 leading-snug">Not in the Preliminary syllabus — it starts at Grade 3. Skip it if his teacher says it isn't needed.</p>` : ''}
+          <div class="mt-2 flex items-center justify-between">
+            <span class="text-[0.65rem] font-bold uppercase tracking-wide ${level.unconfirmed ? 'text-slate-400' : 'text-blue-400'}">${level.rounds} rounds</span>
+            <span>${renderStarsHTML(stars, 'text-base')}</span>
+          </div>`;
+        card.addEventListener('click', () => auralStartLevel(level.id));
+        grid.appendChild(card);
+      });
+    }
+
+    function openAuralLab() {
+      auralRenderLevelSelect();
+      showScreen('aural-levels');
+    }
+
+    function auralExit() {
+      auralClearTimers();
+      auralPhase = 'idle';
+    }
+
+    // ---------- Tap capture ----------
+    function auralRegisterTap() {
+      if (auralPhase !== 'responding' && auralPhase !== 'playing') return;
+      if (!audioCtx) return;
+      if (auralCurrent && (auralCurrent.test === 'time' || auralCurrent.test === 'rhythm')) {
+        auralTaps.push(audioCtx.currentTime);
+        auralTapPad.classList.add('scale-95');
+        setTimeout(() => auralTapPad.classList.remove('scale-95'), 80);
+      }
+    }
+
+    // ---------- Wiring ----------
+    // The Rhythm test reuses this button as "Done", so it carries an explicit mode.
+    auralPlayBtn.addEventListener('click', () => {
+      if (auralPlayBtnMode === 'done') {
+        auralPlayBtnMode = 'play';
+        auralFinishRhythm(auralCurrent);
+        return;
+      }
+      auralStartPlayback();
+    });
+    auralTapPad.addEventListener('pointerdown', e => { e.preventDefault(); auralRegisterTap(); });
+    document.addEventListener('keydown', e => {
+      if (e.code !== 'Space') return;
+      if (document.getElementById('screen-aural-game').classList.contains('hidden')) return;
+      e.preventDefault();
+      auralRegisterTap();
+    });
+    auralAgainBtn.addEventListener('click', () => {
+      const q = auralCurrent;
+      if (!q || q.test !== 'rhythm' || !ensureBeatsAudio()) return;
+      auralReplayed = true;
+      auralTaps = [];
+      let t = audioCtx.currentTime + 0.4;
+      q.units.forEach((u, i) => {
+        auralPlayMidi(q.pitches[i], t, Math.max(0.12, u * q.unitSec * 0.85));
+        t += u * q.unitSec;
+      });
+      auralStatusEl.textContent = 'Played again — your taps were cleared, tap it back now';
+    });
+    document.getElementById('aural-btn-metre-replay').addEventListener('click', () => {
+      if (!auralCurrent || auralCurrent.test !== 'metre') return;
+      if (!ensureBeatsAudio() || !audioCtx) return;
+      auralPlayMetreTune(auralCurrent, 0.25);
+    });
+    document.getElementById('aural-btn-stepnote').addEventListener('click', auralStepNote);
+    document.getElementById('aural-btn-sang-yes').addEventListener('click',
+      () => auralRecord(true, 'Nice work. Ask a grown-up to check you landed on the right notes.'));
+    document.getElementById('aural-btn-sang-no').addEventListener('click',
+      () => auralRecord(false, 'No bother — singing takes practice. Try humming it first, then sing.'));
+    document.getElementById('aural-btn-reveal').addEventListener('click', () => {
+      auralStaffCanvas.classList.remove('hidden');
+      auralDrawPhrase(auralCurrent.notes);
+    });
+    auralNextBtn.addEventListener('click', auralNext);
+    document.getElementById('aural-btn-back').addEventListener('click', () => {
+      auralExit(); auralRenderLevelSelect(); showScreen('aural-levels');
+    });
+    document.getElementById('aural-btn-results-next').addEventListener('click', () => auralStartLevel(auralLevelId + 1));
+    document.getElementById('aural-btn-results-retry').addEventListener('click', () => auralStartLevel(auralLevelId));
+    document.getElementById('aural-btn-results-levels').addEventListener('click', () => {
+      auralRenderLevelSelect(); showScreen('aural-levels');
+    });
+
+    // ---------- Staff reveal for the sung phrase ----------
+    const AURAL_MIDI_TO_STEP = { 60: 28, 62: 29, 64: 30, 65: 31, 67: 32, 69: 33, 71: 34, 72: 35 };
+
+    /**
+     * Draw a line of crotchets on a treble staff.
+     * With `beatsPerBar` it also rules bar lines, prints the time signature and
+     * numbers the beats underneath — which is what makes the metre visible.
+     */
+    function auralDrawStaffCanvas(canvas, notes, opts = {}) {
+      const { beatsPerBar = 0, timeSig = null, beatNumbers = false, colour = '#0284c7' } = opts;
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width) return;
+      const c = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const w = rect.width, h = rect.height;
+      c.clearRect(0, 0, w, h);
+
+      const lineGap = 10;
+      // Leave room below for a middle-C ledger line and the beat-number row,
+      // which a low note's head will otherwise sit on top of.
+      const staffTop = (h - lineGap * 4) / 2 - (beatNumbers ? lineGap * 1.4 : 0);
+      const staffBottom = staffTop + lineGap * 4;
+
+      c.strokeStyle = '#334155';
+      c.lineWidth = 1.2;
+      for (let i = 0; i < 5; i++) {
+        const y = staffTop + i * lineGap;
+        c.beginPath(); c.moveTo(8, y); c.lineTo(w - 8, y); c.stroke();
+      }
+      drawTrebleClef(10, staffTop, lineGap, c);
+
+      let leftEdge = 46;
+      if (timeSig) {
+        const [top, bottom] = timeSig.split('/');
+        c.fillStyle = '#1e293b';
+        c.font = `bold ${lineGap * 1.9}px Georgia, serif`;
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(top, leftEdge, staffTop + lineGap);
+        c.fillText(bottom, leftEdge, staffTop + lineGap * 3);
+        leftEdge += lineGap * 1.5;
+      }
+
+      const right = w - 12;
+      const step = (right - leftEdge) / Math.max(1, notes.length);
+      const xOf = i => leftEdge + step * (i + 0.5);
+
+      if (beatsPerBar > 0) {
+        c.strokeStyle = '#334155';
+        c.lineWidth = 1.6;
+        for (let i = beatsPerBar; i < notes.length; i += beatsPerBar) {
+          const x = leftEdge + step * i;
+          c.beginPath(); c.moveTo(x, staffTop); c.lineTo(x, staffBottom); c.stroke();
+        }
+        c.lineWidth = 2.4;
+        c.beginPath(); c.moveTo(right, staffTop); c.lineTo(right, staffBottom); c.stroke();
+      }
+
+      notes.forEach((midi, i) => {
+        const idx = AURAL_MIDI_TO_STEP[midi];
+        if (idx == null) return;
+        const x = xOf(i);
+        const y = staffBottom - (idx - 30) * (lineGap / 2);
+        if (idx <= 28) {   // middle C and below need a ledger line
+          // Noticeably wider than the note head, as a real ledger line is.
+          c.strokeStyle = '#334155'; c.lineWidth = 1.8;
+          c.beginPath();
+          c.moveTo(x - lineGap * 1.15, staffBottom + lineGap);
+          c.lineTo(x + lineGap * 1.15, staffBottom + lineGap);
+          c.stroke();
+        }
+        const onBeatOne = beatsPerBar > 0 && i % beatsPerBar === 0;
+        c.fillStyle = onBeatOne ? '#1d4ed8' : colour;
+        c.beginPath(); c.ellipse(x, y, lineGap * 0.6, lineGap * 0.46, -0.3, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = c.fillStyle; c.lineWidth = 1.8;
+        c.beginPath();
+        if (idx < 34) { c.moveTo(x + lineGap * 0.58, y); c.lineTo(x + lineGap * 0.58, y - lineGap * 3); }
+        else { c.moveTo(x - lineGap * 0.58, y); c.lineTo(x - lineGap * 0.58, y + lineGap * 3); }
+        c.stroke();
+
+        if (beatNumbers && beatsPerBar > 0) {
+          const beat = (i % beatsPerBar) + 1;
+          c.fillStyle = beat === 1 ? '#1d4ed8' : '#94a3b8';
+          c.font = `${beat === 1 ? '800' : '600'} 11px system-ui, sans-serif`;
+          c.textAlign = 'center';
+          c.textBaseline = 'top';
+          c.fillText(String(beat), x, staffBottom + lineGap * 2.3);
+        }
+      });
+    }
+
+    function auralDrawPhrase(notes) {
+      auralDrawStaffCanvas(auralStaffCanvas, notes);
+    }
+
+    // ==================================================================
+    // THEORY DETECTIVE — AMEB general knowledge, from his own pieces
+    //
+    // The examiner asks 6-10 questions, at least one per List piece,
+    // from the candidate's own part. Everything askable lives in the two
+    // blocks below — EDIT THESE to match the scores exactly.
+    // ==================================================================
+
+    // --- Terms, signs and symbols. `cat` groups them so wrong answers stay plausible. ---
+    const GK_GLOSSARY = {
+      // Tempo and style words
+      moderato:      { prompt: 'Moderato',      style: 'word', answer: 'At a moderate (medium) speed', cat: 'tempo' },
+      ritard:        { prompt: 'ritard.',       style: 'word', answer: 'Gradually getting slower', cat: 'tempo' },
+      atempo:        { prompt: 'a tempo',       style: 'word', answer: 'Back to the original speed', cat: 'tempo' },
+      relaxedswing:  { prompt: 'Relaxed swing', style: 'word', answer: 'In a loose, swinging style', cat: 'tempo' },
+      livelyragtime: { prompt: 'Lively ragtime',style: 'word', answer: 'Bright and lively, in ragtime style', cat: 'tempo' },
+
+      // Dynamics
+      dyn_p:   { prompt: 'p',  style: 'dyn', answer: 'Soft (piano)', cat: 'dynamic' },
+      dyn_mp:  { prompt: 'mp', style: 'dyn', answer: 'Moderately soft (mezzo piano)', cat: 'dynamic' },
+      dyn_mf:  { prompt: 'mf', style: 'dyn', answer: 'Moderately loud (mezzo forte)', cat: 'dynamic' },
+      dyn_f:   { prompt: 'f',  style: 'dyn', answer: 'Loud (forte)', cat: 'dynamic' },
+      dyn_ff:  { prompt: 'ff', style: 'dyn', answer: 'Very loud (fortissimo)', cat: 'dynamic' },
+      cresc:   { prompt: 'cresc', style: 'sign', answer: 'Crescendo — gradually getting louder', cat: 'dynamic' },
+      dim:     { prompt: 'dim',   style: 'sign', answer: 'Diminuendo — gradually getting softer', cat: 'dynamic' },
+
+      // Playing signs
+      pizz:     { prompt: 'pizz.',    style: 'word', answer: 'Pizzicato — pluck the string with your finger', cat: 'playing' },
+      accent:   { prompt: 'accent',   style: 'sign', plainLabel: 'An accent sign', answer: 'Accent — play that note stronger', cat: 'playing' },
+      staccato: { prompt: 'staccato', style: 'sign', plainLabel: 'A dot under the note', answer: 'Staccato — short and detached', cat: 'playing' },
+      downbow:  { prompt: 'downbow',  style: 'sign', plainLabel: 'The down bow sign', answer: 'Down bow — start at the heel, move towards the tip', cat: 'playing' },
+      upbow:    { prompt: 'upbow',    style: 'sign', plainLabel: 'The up bow sign', answer: 'Up bow — start at the tip, move towards the heel', cat: 'playing' },
+      slur:     { prompt: 'slur',     style: 'sign', plainLabel: 'A curved line over different notes', answer: 'Slur — play those notes in one bow', cat: 'playing' },
+      tie:      { prompt: 'tie',      style: 'sign', plainLabel: 'A curved line joining two of the same note', answer: 'Tie — hold the note for both note values', cat: 'playing' },
+    };
+    GK_GLOSSARY.cresc.plainLabel = 'A hairpin opening out';
+    GK_GLOSSARY.dim.plainLabel = 'A hairpin closing in';
+
+    // --- Note and rest values (British names, as AMEB uses) ---
+    const GK_NOTE_VALUES = [
+      { type: 'semibreve', beats: 4,   name: 'Semibreve' },
+      { type: 'minim',     beats: 2,   name: 'Minim' },
+      { type: 'crotchet',  beats: 1,   name: 'Crotchet' },
+      { type: 'quaver',    beats: 0.5, name: 'Quaver' },
+    ];
+
+    // --- His three exam pieces. `items` lists what actually appears in each score. ---
+    const GK_PIECES = [
+      {
+        id: 'A', listLabel: 'List A No 2', title: 'Only joking',
+        composer: 'Michael Rose', born: 1934,
+        key: 'G major', keySig: 'one sharp (F♯)',
+        time: '2/4', beatsPerBar: 2,
+        tempoId: 'moderato', mm: '♩ = 104',
+        items: ['moderato', 'ritard', 'atempo', 'dyn_f', 'dyn_ff', 'dyn_p', 'pizz', 'accent', 'staccato', 'downbow'],
+        notes: ['minim', 'crotchet', 'quaver'],
+        rests: ['crotchet', 'quaver'],
+      },
+      {
+        id: 'B', listLabel: 'List B No 4', title: 'Mister Crocodile',
+        composer: 'Eugenie Teychenné', born: 1953,
+        key: 'G major', keySig: 'one sharp (F♯)',
+        time: '4/4', beatsPerBar: 4,
+        tempoId: 'relaxedswing', mm: '♩ = 100',
+        openingRest: 2,
+        items: ['relaxedswing', 'dyn_mf', 'downbow', 'staccato', 'tie', 'slur'],
+        notes: ['minim', 'crotchet', 'quaver'],
+        rests: ['semibreve', 'crotchet'],
+      },
+      {
+        id: 'C', listLabel: 'List C No 3', title: 'Back-scratcher',
+        composer: 'Edward Huws Jones', born: 1948,
+        key: 'D major', keySig: 'two sharps (F♯ and C♯)',
+        time: '4/4', beatsPerBar: 4,
+        tempoId: 'livelyragtime', mm: '♩ = 108',
+        openingRest: 4,
+        items: ['livelyragtime', 'dyn_mp', 'dyn_f', 'accent', 'cresc', 'dim'],
+        notes: ['minim', 'crotchet', 'quaver'],
+        rests: ['minim', 'crotchet'],
+      },
+    ];
+
+    const GK_LEVELS = [
+      { id: 1, name: 'Only joking', emoji: '🎭', pieces: ['A'], questions: 8,
+        description: 'Every term and sign in your List A piece.' },
+      { id: 2, name: 'Mister Crocodile', emoji: '🐊', pieces: ['B'], questions: 8,
+        description: 'Every term and sign in your List B piece.' },
+      { id: 3, name: 'Back-scratcher', emoji: '🎩', pieces: ['C'], questions: 8,
+        description: 'Every term and sign in your List C piece.' },
+      { id: 4, name: 'Terms & Signs', emoji: '✍️', pieces: ['A', 'B', 'C'], questions: 10,
+        kinds: ['term', 'reverse'],
+        description: 'All three pieces — just the words and symbols.' },
+      { id: 5, name: 'Notes & Rests', emoji: '🎵', pieces: ['A', 'B', 'C'], questions: 8,
+        kinds: ['notevalue', 'restvalue', 'notename', 'openingrest'],
+        description: 'How many beats is each note and rest?' },
+      { id: 6, name: 'Exam Simulation', emoji: '🎓', pieces: ['A', 'B', 'C'], questions: 8,
+        oncePerPiece: true,
+        description: 'The real thing — 8 questions, at least one from each piece.' },
+    ];
+
+    // --- State ---
+    let gkLevelId = 1;
+    let gkQuestions = [];
+    let gkIndex = 0;
+    let gkWrong = 0;
+    let gkMissed = [];
+    let gkLocked = false;
+
+    const gkAnswersEl = document.getElementById('gk-answers');
+    const gkFeedbackEl = document.getElementById('gk-feedback');
+    const gkNextBtn = document.getElementById('gk-btn-next');
+
+    function gkGetLevel(id = gkLevelId) {
+      return GK_LEVELS.find(l => l.id === id) || GK_LEVELS[0];
+    }
+
+    function gkPiece(id) {
+      return GK_PIECES.find(p => p.id === id);
+    }
+
+    function gkBeatsLabel(beats) {
+      if (beats === 0.5) return 'half a beat';
+      return beats === 1 ? '1 beat' : `${beats} beats`;
+    }
+
+    // --- Rendering prompts (words, dynamics, drawn signs, note glyphs) ---
+    function gkSignSvg(id) {
+      const stroke = '#1e293b';
+      const wrap = inner => `<svg viewBox="0 0 80 50" class="h-16 w-28" aria-hidden="true">${inner}</svg>`;
+      switch (id) {
+        // An accent is short and heavy over one note; a hairpin is long and thin
+        // across several. Drawn to different proportions so they can't be confused.
+        case 'accent':
+          return wrap(`<path d="M28 15 L54 25 L28 35" fill="none" stroke="${stroke}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`);
+        case 'downbow':
+          return wrap(`<path d="M24 12 L24 36 M24 12 L56 12 M56 12 L56 36" fill="none" stroke="${stroke}" stroke-width="4" stroke-linecap="round"/>`);
+        case 'upbow':
+          return wrap(`<path d="M24 12 L40 38 L56 12" fill="none" stroke="${stroke}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>`);
+        case 'staccato':
+          return wrap(`<ellipse cx="40" cy="18" rx="9" ry="7" transform="rotate(-20 40 18)" fill="${stroke}"/>
+                       <line x1="48" y1="16" x2="48" y2="-6" stroke="${stroke}" stroke-width="3"/>
+                       <circle cx="40" cy="34" r="4" fill="${stroke}"/>`);
+        case 'cresc':
+          return wrap(`<path d="M74 13 L6 25 L74 37" fill="none" stroke="${stroke}" stroke-width="2.2" stroke-linecap="round"/>`);
+        case 'dim':
+          return wrap(`<path d="M6 13 L74 25 L6 37" fill="none" stroke="${stroke}" stroke-width="2.2" stroke-linecap="round"/>`);
+        // A slur curves over notes at DIFFERENT pitches; a tie joins two of the
+        // SAME pitch. The note heads are placed to show exactly that.
+        case 'slur':
+          return wrap(`<path d="M16 30 Q40 8 64 20" fill="none" stroke="${stroke}" stroke-width="3" stroke-linecap="round"/>
+                       <ellipse cx="16" cy="37" rx="7" ry="5.5" transform="rotate(-20 16 37)" fill="${stroke}"/>
+                       <ellipse cx="64" cy="27" rx="7" ry="5.5" transform="rotate(-20 64 27)" fill="${stroke}"/>`);
+        case 'tie':
+          return wrap(`<path d="M20 30 Q40 12 60 30" fill="none" stroke="${stroke}" stroke-width="3" stroke-linecap="round"/>
+                       <ellipse cx="20" cy="37" rx="7" ry="5.5" transform="rotate(-20 20 37)" fill="${stroke}"/>
+                       <ellipse cx="60" cy="37" rx="7" ry="5.5" transform="rotate(-20 60 37)" fill="${stroke}"/>`);
+        default:
+          return '';
+      }
+    }
+
+    /** The multi-bar rest that opens two of his pieces: a thick bar with a count above. */
+    function gkMultiRestSvg(bars) {
+      const stroke = '#1e293b';
+      return `<svg viewBox="0 0 80 50" class="h-16 w-28" aria-hidden="true">
+        <text x="40" y="16" text-anchor="middle" font-family="Georgia,serif" font-size="18" font-weight="700" fill="${stroke}">${bars}</text>
+        <rect x="22" y="23" width="36" height="9" fill="${stroke}"/>
+        <line x1="22" y1="20" x2="22" y2="35" stroke="${stroke}" stroke-width="2.5"/>
+        <line x1="58" y1="20" x2="58" y2="35" stroke="${stroke}" stroke-width="2.5"/>
+      </svg>`;
+    }
+
+    const GK_REST_CHARS = {
+      semibreve: '𝄻', minim: '𝄼',
+      crotchet: '𝄽', quaver: '𝄾',
+    };
+
+    /** A note glyph, or null when no font/SVG can show it (caller then asks in words). */
+    function gkNoteGlyphHtml(type) {
+      if (useMusicFont) return `<span class="music-font text-7xl leading-none">${MUSIC_NOTE_CHARS[type]}</span>`;
+      if (LEGACY_NOTE_CHARS[type]) return `<span class="text-7xl leading-none">${LEGACY_NOTE_CHARS[type]}</span>`;
+      if (NOTES_SVG_TYPES.has(type)) return noteSvgHtml(type, 'note-svg', 'lg');
+      return null;
+    }
+
+    function gkRestGlyphHtml(type) {
+      if (useMusicFont && GK_REST_CHARS[type]) {
+        return `<span class="music-font text-7xl leading-none">${GK_REST_CHARS[type]}</span>`;
+      }
+      return null;
+    }
+
+    function gkPromptHtml(entry) {
+      if (entry.style === 'word') {
+        return `<span class="text-4xl sm:text-5xl font-semibold italic" style="font-family:Georgia,serif">${entry.prompt}</span>`;
+      }
+      if (entry.style === 'dyn') {
+        return `<span class="text-6xl font-bold italic" style="font-family:Georgia,serif">${entry.prompt}</span>`;
+      }
+      return gkSignSvg(entry.prompt);
+    }
+
+    // --- Question generation ---
+    /** Four distinct options. Pools can repeat (two pieces share a key signature), so dedupe. */
+    function gkShuffledOptions(correct, pool) {
+      const distractors = shuffle([...new Set(pool)].filter(x => x !== correct)).slice(0, 3);
+      return shuffle([correct, ...distractors]);
+    }
+
+    function gkTermQuestion(piece, itemId, reverse = false) {
+      const entry = GK_GLOSSARY[itemId];
+      const samecat = Object.values(GK_GLOSSARY).filter(e => e.cat === entry.cat);
+      const pool = (samecat.length >= 4 ? samecat : Object.values(GK_GLOSSARY));
+      if (reverse) {
+        const labels = pool.map(e => e.plainLabel || e.prompt);
+        const correctLabel = entry.plainLabel || entry.prompt;
+        return {
+          piece, promptHtml: '', kind: 'reverse',
+          question: `In "${piece.title}", which sign or word means: ${entry.answer}?`,
+          options: gkShuffledOptions(correctLabel, labels),
+          correct: correctLabel,
+          explain: `${entry.plainLabel || entry.prompt} — ${entry.answer}.`,
+        };
+      }
+      return {
+        piece, promptHtml: gkPromptHtml(entry), kind: 'term',
+        question: `This is in "${piece.title}". What does it mean?`,
+        options: gkShuffledOptions(entry.answer, pool.map(e => e.answer)),
+        correct: entry.answer,
+        explain: `${entry.plainLabel || entry.prompt} means: ${entry.answer}.`,
+      };
+    }
+
+    function gkFactQuestion(piece, which) {
+      if (which === 'key') {
+        return {
+          piece, promptHtml: '', kind: 'key',
+          question: `What key is "${piece.title}" in?`,
+          options: gkShuffledOptions(piece.key, ['G major', 'D major', 'A major', 'C major', 'F major']),
+          correct: piece.key,
+          explain: `"${piece.title}" is in ${piece.key} — ${piece.keySig}.`,
+        };
+      }
+      if (which === 'keysig') {
+        return {
+          piece, promptHtml: '', kind: 'key',
+          question: `How many sharps are in the key signature of "${piece.title}"?`,
+          options: gkShuffledOptions(piece.keySig, GK_PIECES.map(p => p.keySig).concat(['three sharps (F♯, C♯ and G♯)', 'no sharps or flats'])),
+          correct: piece.keySig,
+          explain: `${piece.key} has ${piece.keySig}.`,
+        };
+      }
+      if (which === 'time') {
+        return {
+          piece, promptHtml: `<span class="text-6xl font-bold leading-none" style="font-family:Georgia,serif">${piece.time.replace('/', '')}</span>`,
+          kind: 'time',
+          question: `How many beats are in a bar of "${piece.title}"?`,
+          options: gkShuffledOptions(`${piece.beatsPerBar} beats`, ['2 beats', '3 beats', '4 beats', '6 beats']),
+          correct: `${piece.beatsPerBar} beats`,
+          explain: `"${piece.title}" is in ${piece.time} — ${piece.beatsPerBar} crotchet beats in every bar.`,
+        };
+      }
+      if (which === 'composer') {
+        return {
+          piece, promptHtml: '', kind: 'composer',
+          question: `Who wrote "${piece.title}"?`,
+          options: gkShuffledOptions(piece.composer, GK_PIECES.map(p => p.composer).concat(['Edward Elgar', 'Suzuki'])),
+          correct: piece.composer,
+          explain: `"${piece.title}" was written by ${piece.composer} (born ${piece.born}).`,
+        };
+      }
+      if (which === 'openingrest') {
+        const bars = piece.openingRest;
+        return {
+          piece, promptHtml: gkMultiRestSvg(bars), kind: 'openingrest',
+          question: `"${piece.title}" starts with this. How many whole bars do you count before you play?`,
+          options: gkShuffledOptions(`${bars} bars`, ['1 bar', '2 bars', '3 bars', '4 bars', '8 bars']),
+          correct: `${bars} bars`,
+          explain: `That is a multi-bar rest — count ${bars} whole bars of silence, then come in.`,
+        };
+      }
+      // tempo word
+      const entry = GK_GLOSSARY[piece.tempoId];
+      return {
+        piece, promptHtml: '', kind: 'tempoword',
+        question: `What is the tempo marking written at the start of "${piece.title}"?`,
+        options: gkShuffledOptions(entry.prompt, GK_PIECES.map(p => GK_GLOSSARY[p.tempoId].prompt).concat(['Allegro', 'Andante'])),
+        correct: entry.prompt,
+        explain: `"${piece.title}" is marked ${entry.prompt} (${entry.answer}), ${piece.mm}.`,
+      };
+    }
+
+    function gkNoteQuestion(piece, type, isRest) {
+      const meta = GK_NOTE_VALUES.find(n => n.type === type);
+      const glyph = isRest ? gkRestGlyphHtml(type) : gkNoteGlyphHtml(type);
+      const label = isRest ? `${meta.name.toLowerCase()} rest` : meta.name.toLowerCase();
+      return {
+        piece, promptHtml: glyph || '', kind: isRest ? 'restvalue' : 'notevalue',
+        question: glyph
+          ? `This ${isRest ? 'rest' : 'note'} is in "${piece.title}". How many beats does it last?`
+          : `How many beats is a ${label}?`,
+        options: gkShuffledOptions(gkBeatsLabel(meta.beats), GK_NOTE_VALUES.map(n => gkBeatsLabel(n.beats))),
+        correct: gkBeatsLabel(meta.beats),
+        explain: `A ${label} lasts ${gkBeatsLabel(meta.beats)}.`,
+      };
+    }
+
+    function gkNameNoteQuestion(piece, type) {
+      const meta = GK_NOTE_VALUES.find(n => n.type === type);
+      const glyph = gkNoteGlyphHtml(type);
+      if (!glyph) return gkNoteQuestion(piece, type, false);
+      return {
+        piece, promptHtml: glyph, kind: 'notename',
+        question: `What is this note called?`,
+        options: gkShuffledOptions(meta.name, GK_NOTE_VALUES.map(n => n.name)),
+        correct: meta.name,
+        explain: `That is a ${meta.name.toLowerCase()} — ${gkBeatsLabel(meta.beats)}.`,
+      };
+    }
+
+    /** All the questions a given piece can produce, as thunks. */
+    function gkPieceQuestionPool(piece, kinds) {
+      const out = [];
+      const want = k => !kinds || kinds.includes(k);
+      if (want('term')) piece.items.forEach(id => out.push(() => gkTermQuestion(piece, id, false)));
+      if (want('reverse')) piece.items.forEach(id => out.push(() => gkTermQuestion(piece, id, true)));
+      if (want('key')) { out.push(() => gkFactQuestion(piece, 'key')); out.push(() => gkFactQuestion(piece, 'keysig')); }
+      if (want('time')) out.push(() => gkFactQuestion(piece, 'time'));
+      if (want('composer')) out.push(() => gkFactQuestion(piece, 'composer'));
+      if (want('tempoword')) out.push(() => gkFactQuestion(piece, 'tempoword'));
+      if (want('openingrest') && piece.openingRest) out.push(() => gkFactQuestion(piece, 'openingrest'));
+      if (want('notevalue')) piece.notes.forEach(t => out.push(() => gkNoteQuestion(piece, t, false)));
+      if (want('restvalue')) piece.rests.forEach(t => out.push(() => gkNoteQuestion(piece, t, true)));
+      if (want('notename')) piece.notes.forEach(t => out.push(() => gkNameNoteQuestion(piece, t)));
+      return out;
+    }
+
+    function gkBuildQuestions(level) {
+      const pieces = level.pieces.map(gkPiece);
+      const picked = [];
+
+      if (level.oncePerPiece) {
+        // Mirror the examiner: at least one question from every List piece.
+        pieces.forEach(p => {
+          const pool = shuffle(gkPieceQuestionPool(p, level.kinds));
+          if (pool.length) picked.push(pool[0]());
+        });
+      }
+
+      const rest = shuffle(pieces.flatMap(p => gkPieceQuestionPool(p, level.kinds)));
+      let i = 0;
+      while (picked.length < level.questions && rest.length) {
+        const q = rest[i % rest.length]();
+        i++;
+        // Avoid repeating the same question text within one round.
+        if (!picked.some(x => x.question === q.question && x.correct === q.correct)) picked.push(q);
+        else if (i > rest.length * 3) break;
+      }
+      return shuffle(picked).slice(0, level.questions);
+    }
+
+    // --- Playing a round ---
+    function gkShowQuestion() {
+      const q = gkQuestions[gkIndex];
+      if (!q) return;
+      gkLocked = false;
+      document.getElementById('gk-piece-badge').textContent = `${q.piece.listLabel} · ${q.piece.title}`;
+      document.getElementById('gk-prompt').innerHTML = q.promptHtml || '';
+      document.getElementById('gk-prompt').classList.toggle('hidden', !q.promptHtml);
+      document.getElementById('gk-question').textContent = q.question;
+      document.getElementById('gk-progress-label').textContent =
+        `Question ${gkIndex + 1} of ${gkQuestions.length}`;
+
+      gkAnswersEl.innerHTML = '';
+      q.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'gk-answer w-full text-left px-4 py-3 rounded-2xl bg-white border-2 border-orange-200 text-slate-700 font-bold text-sm sm:text-base shadow active:scale-[0.98] transition-all';
+        btn.textContent = opt;
+        btn.addEventListener('click', () => gkAnswer(opt, btn));
+        gkAnswersEl.appendChild(btn);
+      });
+
+      gkFeedbackEl.textContent = '';
+      gkNextBtn.classList.add('hidden');
+      gkUpdateScoreDots();
+    }
+
+    function gkAnswer(choice, buttonEl) {
+      if (gkLocked) return;
+      gkLocked = true;
+      const q = gkQuestions[gkIndex];
+      const isCorrect = choice === q.correct;
+      q.state = isCorrect ? 'correct' : 'wrong';
+
+      if (!isCorrect) {
+        gkWrong++;
+        gkMissed.push(q);
+      }
+
+      gkAnswersEl.querySelectorAll('.gk-answer').forEach(b => {
+        b.disabled = true;
+        if (b.textContent === q.correct) {
+          b.className = 'gk-answer w-full text-left px-4 py-3 rounded-2xl bg-emerald-500 border-2 border-emerald-600 text-white font-bold text-sm sm:text-base shadow';
+        } else if (b === buttonEl) {
+          b.className = 'gk-answer w-full text-left px-4 py-3 rounded-2xl bg-rose-500 border-2 border-rose-600 text-white font-bold text-sm sm:text-base shadow';
+        } else {
+          b.className = 'gk-answer w-full text-left px-4 py-3 rounded-2xl bg-white border-2 border-slate-200 text-slate-400 font-bold text-sm sm:text-base opacity-70';
+        }
+      });
+
+      if (isCorrect) {
+        const cheers = ['Yes!', 'Correct!', 'Got it!', 'Nice one!', 'Spot on!'];
+        gkFeedbackEl.className = 'text-center text-sm font-bold min-h-[3rem] flex items-center justify-center px-2 text-emerald-600';
+        gkFeedbackEl.textContent = `${cheers[randomInt(0, cheers.length - 1)]} ${q.explain}`;
+      } else {
+        gkFeedbackEl.className = 'text-center text-sm font-bold min-h-[3rem] flex items-center justify-center px-2 text-rose-600';
+        gkFeedbackEl.textContent = q.explain;
+      }
+      gkUpdateScoreDots();
+      gkNextBtn.classList.remove('hidden');
+    }
+
+    function gkNextQuestion() {
+      gkIndex++;
+      if (gkIndex >= gkQuestions.length) { gkFinish(); return; }
+      gkShowQuestion();
+    }
+
+    function gkUpdateScoreDots() {
+      document.getElementById('gk-score-dots').innerHTML = gkQuestions.map(q => {
+        const colour = q.state === 'correct' ? 'bg-emerald-500'
+          : q.state === 'wrong' ? 'bg-rose-400' : 'bg-slate-300';
+        return `<span class="w-2.5 h-2.5 rounded-full ${colour}"></span>`;
+      }).join('');
+    }
+
+    function gkStartLevel(id) {
+      gkLevelId = id;
+      const level = gkGetLevel();
+      gkQuestions = gkBuildQuestions(level);
+      gkIndex = 0;
+      gkWrong = 0;
+      gkMissed = [];
+      document.getElementById('gk-level-badge').textContent = `${level.emoji} ${level.name}`;
+      const user = getCurrentUser();
+      document.getElementById('gk-player-label').textContent = `${user.emoji} ${user.name}`;
+      showScreen('gk-game');
+      gkShowQuestion();
+    }
+
+    function gkFinish() {
+      const level = gkGetLevel();
+      const stars = gkWrong <= 1 ? 3 : gkWrong <= 3 ? 2 : 1;
+      const prevBest = gkGetLevelStars(level.id);
+      gkSaveLevelStars(level.id, stars);
+
+      document.getElementById('gk-results-level').textContent = `${level.emoji} ${level.name}`;
+      const msg = stars === 3
+        ? (gkWrong === 0 ? 'Perfect — every question!' : 'Excellent work!')
+        : stars === 2 ? 'Good going — nearly there!' : 'Keep at it — go again!';
+      document.getElementById('gk-results-message').textContent =
+        prevBest > 0 && stars > prevBest ? `${msg} New best!` : msg;
+
+      document.getElementById('gk-results-stars').innerHTML = [1, 2, 3].map((i, idx) =>
+        `<span class="star-pop ${idx === 1 ? 'star-pop-delay-1' : idx === 2 ? 'star-pop-delay-2' : ''} ${i <= stars ? 'text-amber-400' : 'text-slate-200'}">★</span>`
+      ).join('');
+
+      const total = gkQuestions.length;
+      document.getElementById('gk-results-stats').textContent =
+        `${total - gkWrong} of ${total} correct`;
+
+      document.getElementById('gk-results-missed').innerHTML = gkMissed.length
+        ? `<p class="font-bold text-slate-700 mb-1 text-center">Worth another look:</p><ul class="list-disc pl-5 space-y-1">${
+            gkMissed.map(q => `<li>${q.explain}</li>`).join('')}</ul>`
+        : '';
+
+      document.getElementById('gk-btn-results-next').classList.toggle(
+        'hidden', !GK_LEVELS.some(l => l.id === level.id + 1));
+
+      showScreen('gk-results');
+      if (stars === 3 && typeof confetti === 'function') {
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+      }
+    }
+
+    // --- Progress (shares the app's user profiles) ---
+    function gkGetLevelStars(levelId) {
+      return loadAppData().users[currentUserId]?.gkStars?.[levelId] || 0;
+    }
+
+    function gkSaveLevelStars(levelId, stars) {
+      const data = loadAppData();
+      const userData = data.users[currentUserId];
+      if (!userData.gkStars) userData.gkStars = {};
+      userData.gkStars[levelId] = Math.max(userData.gkStars[levelId] || 0, stars);
+      saveAppData(data);
+    }
+
+    function gkGetTotalStars() {
+      const stars = loadAppData().users[currentUserId]?.gkStars || {};
+      return GK_LEVELS.reduce((sum, l) => sum + (stars[l.id] || 0), 0);
+    }
+
+    // --- Case select + study sheet ---
+    function gkRenderUserSwitcher() {
+      const el = document.getElementById('gk-user-switcher');
+      el.innerHTML = '';
+      USERS.forEach(user => {
+        const btn = document.createElement('button');
+        const active = user.id === currentUserId;
+        btn.className = `px-4 py-2 rounded-xl text-sm font-extrabold border-2 transition-all active:scale-95 ${
+          active ? 'border-orange-500 bg-orange-100 text-orange-700 shadow-[0_0_0_4px_rgba(249,115,22,0.25)]'
+                 : 'border-slate-200 bg-white text-slate-600 hover:border-orange-200'}`;
+        btn.textContent = `${user.emoji} ${user.name}`;
+        btn.addEventListener('click', () => {
+          if (user.id !== currentUserId) { setCurrentUser(user.id); gkRenderLevelSelect(); }
+        });
+        el.appendChild(btn);
+      });
+    }
+
+    function gkRenderLevelSelect() {
+      gkRenderUserSwitcher();
+      const user = getCurrentUser();
+      document.getElementById('gk-total-stars').textContent =
+        `${user.name}: ${gkGetTotalStars()} of ${GK_LEVELS.length * 3} stars`;
+
+      const grid = document.getElementById('gk-level-grid');
+      grid.innerHTML = '';
+      GK_LEVELS.forEach(level => {
+        const stars = gkGetLevelStars(level.id);
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'level-card text-left rounded-2xl bg-white/95 border-2 border-orange-200 p-4 shadow-lg active:scale-95';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-extrabold text-orange-500">CASE ${level.id}</span>
+            <span class="text-2xl">${level.emoji}</span>
+          </div>
+          <p class="mt-1 text-lg font-extrabold text-slate-700">${level.name}</p>
+          <p class="mt-1 text-xs text-slate-500 font-medium min-h-[2.5rem]">${level.description}</p>
+          <div class="mt-2 flex items-center justify-between">
+            <span class="text-[0.65rem] font-bold uppercase tracking-wide text-orange-400">${level.questions} questions</span>
+            <span>${renderStarsHTML(stars, 'text-base')}</span>
+          </div>`;
+        card.addEventListener('click', () => gkStartLevel(level.id));
+        grid.appendChild(card);
+      });
+    }
+
+    function gkRenderStudySheet() {
+      const el = document.getElementById('gk-study-content');
+      el.innerHTML = GK_PIECES.map(p => {
+        const rows = p.items.map(id => {
+          const e = GK_GLOSSARY[id];
+          const shown = e.style === 'sign'
+            ? gkSignSvg(e.prompt).replace('h-16 w-28', 'h-8 w-14 inline-block align-middle')
+            : `<span class="${e.style === 'dyn' ? 'text-2xl font-bold italic' : 'text-lg italic'}" style="font-family:Georgia,serif">${e.prompt}</span>`;
+          return `<tr class="border-b border-orange-100">
+            <td class="py-2 pr-3 w-28">${shown}</td>
+            <td class="py-2 text-sm text-slate-600 font-medium">${e.answer}</td></tr>`;
+        }).join('');
+        return `
+          <section class="bg-white/95 rounded-2xl border-2 border-orange-200 shadow p-4">
+            <p class="text-xs font-extrabold uppercase tracking-wide text-orange-400">${p.listLabel}</p>
+            <h2 class="text-xl font-extrabold text-slate-700">${p.title}</h2>
+            <p class="text-sm text-slate-500 font-medium">${p.composer} (born ${p.born})</p>
+            <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <div><dt class="inline font-bold text-slate-600">Key:</dt> <dd class="inline text-slate-600">${p.key} — ${p.keySig}</dd></div>
+              <div><dt class="inline font-bold text-slate-600">Time:</dt> <dd class="inline text-slate-600">${p.time} — ${p.beatsPerBar} beats in a bar</dd></div>
+              <div class="col-span-2"><dt class="inline font-bold text-slate-600">Tempo:</dt>
+                <dd class="inline text-slate-600">${GK_GLOSSARY[p.tempoId].prompt} (${GK_GLOSSARY[p.tempoId].answer}), ${p.mm}</dd></div>
+            </dl>
+            <table class="mt-3 w-full"><tbody>${rows}${p.openingRest ? `
+              <tr class="border-b border-orange-100">
+                <td class="py-2 pr-3 w-28">${gkMultiRestSvg(p.openingRest).replace('h-16 w-28', 'h-8 w-14 inline-block align-middle')}</td>
+                <td class="py-2 text-sm text-slate-600 font-medium">Multi-bar rest — count ${p.openingRest} whole bars before you start</td>
+              </tr>` : ''}</tbody></table>
+          </section>`;
+      }).join('');
+    }
+
+    function openTheoryDetective() {
+      gkRenderLevelSelect();
+      showScreen('gk-levels');
+    }
+
+    // --- Wiring ---
+    document.getElementById('gk-btn-back').addEventListener('click', () => {
+      gkRenderLevelSelect(); showScreen('gk-levels');
+    });
+    gkNextBtn.addEventListener('click', gkNextQuestion);
+    document.getElementById('gk-btn-results-next').addEventListener('click', () => gkStartLevel(gkLevelId + 1));
+    document.getElementById('gk-btn-results-retry').addEventListener('click', () => gkStartLevel(gkLevelId));
+    document.getElementById('gk-btn-results-levels').addEventListener('click', () => {
+      gkRenderLevelSelect(); showScreen('gk-levels');
+    });
+    document.getElementById('gk-btn-study').addEventListener('click', () => {
+      gkRenderStudySheet(); showScreen('gk-study');
+    });
+    document.getElementById('gk-btn-study-back').addEventListener('click', () => {
+      gkRenderLevelSelect(); showScreen('gk-levels');
+    });
 
     // ==================================================================
     // STRING QUEST — read a note on the staff, find it on the violin
