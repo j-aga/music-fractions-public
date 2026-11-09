@@ -877,6 +877,22 @@
           </button>
         </div>
 
+        <!-- Test 1: the tune and the beat drawn together, after the round -->
+        <div id="aural-panel-time" class="hidden mt-4">
+          <p class="text-xs font-bold text-slate-500 mb-1">The tune you heard, and the beat you were clapping:</p>
+          <canvas id="aural-time-canvas" class="w-full h-40 rounded-lg bg-white"></canvas>
+          <p class="mt-1 text-[0.68rem] text-slate-500 font-medium leading-snug text-left px-1">
+            The <span class="font-extrabold text-slate-800">black notes</span> are the tune — some long, some short, some between the beats.
+            The <span class="font-extrabold text-blue-700">dots underneath</span> are the beat, always evenly spaced.
+            <span class="font-extrabold">Clap the dots, not the notes.</span>
+            After these 4 bars the music stopped and you kept the same dots going on your own.
+          </p>
+          <button id="aural-btn-time-replay"
+            class="mt-2 w-full px-4 py-3 rounded-2xl bg-sky-500 hover:bg-sky-600 active:scale-95 text-white font-extrabold text-sm shadow transition-all">
+            🔊 Play it again while you watch
+          </button>
+        </div>
+
         <!-- Sing panel -->
         <div id="aural-panel-sing" class="hidden mt-4">
           <p class="text-xs text-slate-500 font-medium mb-2">The examiner plays it through, then again one note at a time, waiting for you to sing each one.</p>
@@ -3626,13 +3642,46 @@ function explorerExploreNote(type, beats, name) {
     }
 
     // ---------- Test generators ----------
+    /**
+     * Bar rhythms for the Time tune, in beats. Mixed lengths are the whole
+     * point: a minim is one sound lasting two claps and a pair of quavers is
+     * two sounds inside one clap, which is exactly where a child who claps
+     * note-for-note comes unstuck.
+     */
+    const AURAL_TIME_BAR_RHYTHMS = {
+      2: [[1, 1], [2], [1, 0.5, 0.5], [0.5, 0.5, 1]],
+      3: [[1, 1, 1], [2, 1], [1, 2], [1, 1, 0.5, 0.5], [0.5, 0.5, 1, 1]],
+    };
+
     function auralMakeTime() {
       const speeds = [['slow', 63], ['moderate', 92], ['quick', 138]];
       const [speedName, bpm] = speeds[randomInt(0, speeds.length - 1)];
+      const beatsPerBar = Math.random() < 0.5 ? 2 : 3;
+      const playedBars = 4;
+
+      // A tune sits above the chords so the beat is something he has to hear
+      // underneath the music, as it is in the exam, rather than copy note for
+      // note. Built here, not during playback, so it can be drawn afterwards.
+      const scale = [60, 62, 64, 65, 67, 69, 71, 72];
+      const pats = AURAL_TIME_BAR_RHYTHMS[beatsPerBar];
+      const melody = [];
+      let idx = randomInt(2, 5);
+      let at = 0;
+      for (let b = 0; b < playedBars; b++) {
+        pats[randomInt(0, pats.length - 1)].forEach(dur => {
+          // Lean back towards the middle near the ends of the scale, or the
+          // walk clamps against the top and the tune sits on one note.
+          const steps = idx >= 5 ? [-2, -2, -1, -1, 0, 1]
+                      : idx <= 2 ? [-1, 0, 1, 1, 2, 2]
+                      : [-2, -1, -1, 1, 1, 2];
+          idx = Math.max(0, Math.min(scale.length - 1, idx + steps[randomInt(0, steps.length - 1)]));
+          melody.push({ midi: scale[idx], dur, beat: at });
+          at += dur;
+        });
+      }
       return {
-        kind: 'time',
-        beatsPerBar: Math.random() < 0.5 ? 2 : 3,
-        bpm, speedName, playedBars: 4, silentBars: 4,
+        kind: 'time', beatsPerBar, bpm, speedName,
+        playedBars, silentBars: 4, melody,
       };
     }
 
@@ -3710,8 +3759,8 @@ function explorerExploreNote(type, beats, name) {
     }
 
     const AURAL_TEST_INFO = {
-      time:    { label: 'Test 1 · Time', instruction: 'Clap the beat while it plays — then keep clapping in time after it stops.' },
-      rhythm:  { label: 'Test 2 · Rhythm', instruction: 'Listen to the two bars, then tap back the note values.' },
+      time:    { label: 'Test 1 · Time', instruction: 'Clap the steady beat underneath the tune — not the notes — then keep clapping after the music stops.' },
+      rhythm:  { label: 'Test 2 · Rhythm', instruction: 'Listen to the two bars, then tap back the notes themselves — this time the rhythm, not the beat.' },
       sing:    { label: 'Test 3 · Pitch', instruction: 'Listen to the phrase, then sing or hum it back.' },
       highlow: { label: 'Test 4 · Pitch', instruction: 'Two notes, played one after the other.' },
       metre:   { label: 'Extra · Beats in a Bar', instruction: 'Listen to the tune, then say how many beats are in each bar.' },
@@ -3749,6 +3798,7 @@ function explorerExploreNote(type, beats, name) {
       document.getElementById('aural-panel-tap').classList.add('hidden');
       document.getElementById('aural-panel-sing').classList.add('hidden');
       document.getElementById('aural-panel-metre').classList.add('hidden');
+      document.getElementById('aural-panel-time').classList.add('hidden');
       // Empty the choice panel, not just hide it: leftover buttons from the last
       // round stay clickable and still carry the previous round's answer.
       const choicePanel = document.getElementById('aural-panel-choice');
@@ -3829,14 +3879,17 @@ function explorerExploreNote(type, beats, name) {
       });
     }
 
-    function auralRunTime(q) {
+    /**
+     * Plays the accompanying chords on every beat with the tune on top, the
+     * way the examiner's piano does. Returns the audio time of beat 1 so the
+     * caller can lay the expected beats over the same clock.
+     */
+    function auralPlayTimeTune(q, startDelay = 0.7) {
       const beat = 60 / q.bpm;
-      const t0 = audioCtx.currentTime + 0.7;
-      const totalBeats = (q.playedBars + q.silentBars) * q.beatsPerBar;
-      const playedBeats = q.playedBars * q.beatsPerBar;
-      auralExpected = Array.from({ length: totalBeats }, (_, i) => t0 + i * beat);
-
-      const chords = [[60, 64, 67], [59, 62, 67], [60, 65, 69], [59, 62, 67]];
+      const t0 = audioCtx.currentTime + startDelay;
+      // An octave below the tune, so the pulse is felt underneath rather than
+      // competing with the melody for the same notes.
+      const chords = [[48, 52, 55], [47, 50, 55], [48, 53, 57], [47, 50, 55]];
       for (let b = 0; b < q.playedBars; b++) {
         const ch = chords[b % chords.length];
         for (let k = 0; k < q.beatsPerBar; k++) {
@@ -3845,6 +3898,17 @@ function explorerExploreNote(type, beats, name) {
           auralPlayChord(k === 0 ? [...ch, ch[0] - 12] : ch, at, beat * 0.55);
         }
       }
+      q.melody.forEach(n =>
+        auralPlayMidi(n.midi, t0 + n.beat * beat, Math.max(0.12, n.dur * beat * 0.9)));
+      return t0;
+    }
+
+    function auralRunTime(q) {
+      const beat = 60 / q.bpm;
+      const t0 = auralPlayTimeTune(q);
+      const totalBeats = (q.playedBars + q.silentBars) * q.beatsPerBar;
+      const playedBeats = q.playedBars * q.beatsPerBar;
+      auralExpected = Array.from({ length: totalBeats }, (_, i) => t0 + i * beat);
 
       document.getElementById('aural-panel-tap').classList.remove('hidden');
       auralStatusEl.textContent = `Get ready — ${q.speedName} speed, ${q.beatsPerBar} beats in a bar`;
@@ -3891,13 +3955,22 @@ function explorerExploreNote(type, beats, name) {
 
       let msg;
       if (pass) {
-        msg = `Well done — you kept the beat for ${hitsSilent} of ${silentBeats} beats after the music stopped.`;
+        msg = `Well done — you kept the beat for ${hitsSilent} of ${silentBeats} beats after the music stopped. The picture below shows the tune above the beat you clapped.`;
       } else if (tooManyTaps) {
-        msg = `That was ${extras} extra taps — you were tapping the tune, not the beat. Tap only on the steady pulse: ${q.beatsPerBar} per bar.`;
+        msg = `That was ${extras} extra taps — you were clapping the tune, not the beat. Look below: clap the dots, which are evenly spaced, not the notes, which are not.`;
       } else {
-        msg = `You got ${hitsPlayed}/${playedBeats} beats with the music and ${hitsSilent}/${silentBeats} after it stopped. Keeping going is the tricky bit — try counting out loud.`;
+        msg = `You got ${hitsPlayed}/${playedBeats} beats with the music and ${hitsSilent}/${silentBeats} after it stopped. Keeping going is the tricky bit — find the green dots below and count them out loud.`;
       }
+      auralRevealTime(q, new Set(matched));
       auralRecord(pass, msg);
+    }
+
+    /** Draw the tune he just heard with the beat ruled underneath it. */
+    function auralRevealTime(q, hitBeats) {
+      const panel = document.getElementById('aural-panel-time');
+      panel.classList.remove('hidden');
+      requestAnimationFrame(() =>
+        auralDrawTimeReveal(document.getElementById('aural-time-canvas'), q, hitBeats));
     }
 
     function auralRunRhythm(q) {
@@ -4240,6 +4313,11 @@ function explorerExploreNote(type, beats, name) {
       if (!ensureBeatsAudio() || !audioCtx) return;
       auralPlayMetreTune(auralCurrent, 0.25);
     });
+    document.getElementById('aural-btn-time-replay').addEventListener('click', () => {
+      if (!auralCurrent || auralCurrent.test !== 'time') return;
+      if (!ensureBeatsAudio() || !audioCtx) return;
+      auralPlayTimeTune(auralCurrent, 0.25);
+    });
     document.getElementById('aural-btn-stepnote').addEventListener('click', auralStepNote);
     document.getElementById('aural-btn-sang-yes').addEventListener('click',
       () => auralRecord(true, 'Nice work. Ask a grown-up to check you landed on the right notes.'));
@@ -4351,6 +4429,127 @@ function explorerExploreNote(type, beats, name) {
           c.fillText(String(beat), x, staffBottom + lineGap * 2.3);
         }
       });
+    }
+
+    /**
+     * Test 1's answer: the tune on the staff with the beat ruled underneath it,
+     * so the uneven note lengths and the even pulse can be seen against each
+     * other. Beats he actually clapped are filled green, the ones he missed
+     * stay grey — the picture explains the mark as well as the music.
+     */
+    function auralDrawTimeReveal(canvas, q, hitBeats = new Set()) {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width) return;
+      const c = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const w = rect.width, h = rect.height;
+      c.clearRect(0, 0, w, h);
+
+      const lineGap = 11;
+      const staffTop = 32;
+      const staffBottom = staffTop + lineGap * 4;
+      const totalBeats = q.playedBars * q.beatsPerBar;
+
+      c.strokeStyle = '#334155';
+      c.lineWidth = 1.2;
+      for (let i = 0; i < 5; i++) {
+        const y = staffTop + i * lineGap;
+        c.beginPath(); c.moveTo(8, y); c.lineTo(w - 8, y); c.stroke();
+      }
+      drawTrebleClef(10, staffTop, lineGap, c);
+
+      let leftEdge = 46;
+      c.fillStyle = '#1e293b';
+      c.font = `bold ${lineGap * 1.9}px Georgia, serif`;
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(String(q.beatsPerBar), leftEdge, staffTop + lineGap);
+      c.fillText('4', leftEdge, staffTop + lineGap * 3);
+      leftEdge += lineGap * 1.6;
+
+      const right = w - 12;
+      const beatW = (right - leftEdge) / totalBeats;
+      const xOf = beat => leftEdge + (beat + 0.5) * beatW;
+
+      c.strokeStyle = '#334155';
+      c.lineWidth = 1.6;
+      for (let b = q.beatsPerBar; b < totalBeats; b += q.beatsPerBar) {
+        const x = leftEdge + b * beatW;
+        c.beginPath(); c.moveTo(x, staffTop); c.lineTo(x, staffBottom); c.stroke();
+      }
+      c.lineWidth = 2.4;
+      c.beginPath(); c.moveTo(right, staffTop); c.lineTo(right, staffBottom); c.stroke();
+
+      q.melody.forEach(n => {
+        const idx = AURAL_MIDI_TO_STEP[n.midi];
+        if (idx == null) return;
+        const x = xOf(n.beat);
+        const y = staffBottom - (idx - 30) * (lineGap / 2);
+        if (idx <= 28) {   // middle C and below need a ledger line
+          c.strokeStyle = '#334155'; c.lineWidth = 1.8;
+          c.beginPath();
+          c.moveTo(x - lineGap * 1.15, staffBottom + lineGap);
+          c.lineTo(x + lineGap * 1.15, staffBottom + lineGap);
+          c.stroke();
+        }
+        // Black, as printed music is — the beat row below owns the colour.
+        c.strokeStyle = '#0f172a';
+        c.fillStyle = '#0f172a';
+        c.lineWidth = 1.8;
+        c.beginPath();
+        c.ellipse(x, y, lineGap * 0.6, lineGap * 0.46, -0.3, 0, Math.PI * 2);
+        if (n.dur >= 2) {   // a minim is hollow: one sound, two claps
+          c.save(); c.fillStyle = '#ffffff'; c.fill(); c.restore(); c.stroke();
+        } else {
+          c.fill();
+        }
+
+        const up = idx < 34;
+        const sx = x + (up ? lineGap * 0.58 : -lineGap * 0.58);
+        const sy = y + (up ? -lineGap * 3 : lineGap * 3);
+        c.beginPath(); c.moveTo(sx, y); c.lineTo(sx, sy); c.stroke();
+
+        if (n.dur < 1) {   // quaver: two sounds inside one clap
+          const d = up ? lineGap : -lineGap;
+          c.beginPath();
+          c.moveTo(sx, sy);
+          c.quadraticCurveTo(sx + d * 0.9, sy + d * 0.5, sx + d * 0.5, sy + d * 1.3);
+          c.stroke();
+        }
+      });
+
+      // A tinted band so the beat reads as its own layer under the music.
+      const dotY = staffBottom + lineGap * 2.2;
+      c.fillStyle = '#eff6ff';
+      c.beginPath();
+      c.roundRect(8, dotY - lineGap, w - 16, lineGap * 2.5, 6);
+      c.fill();
+
+      for (let i = 0; i < totalBeats; i++) {
+        const x = xOf(i);
+        const first = i % q.beatsPerBar === 0;
+        c.beginPath();
+        c.arc(x, dotY, first ? 5.5 : 4.2, 0, Math.PI * 2);
+        c.fillStyle = hitBeats.has(i) ? '#10b981' : '#cbd5e1';
+        c.fill();
+        if (first) { c.strokeStyle = '#1d4ed8'; c.lineWidth = 2; c.stroke(); }
+
+        c.fillStyle = first ? '#1d4ed8' : '#94a3b8';
+        c.font = `${first ? '800' : '600'} 11px system-ui, sans-serif`;
+        c.textAlign = 'center';
+        c.textBaseline = 'top';
+        c.fillText(String((i % q.beatsPerBar) + 1), x, dotY + 9);
+      }
+
+      // Name the lower row, so the two layers are distinguished by more than colour.
+      c.fillStyle = '#64748b';
+      c.font = '700 10px system-ui, sans-serif';
+      c.textAlign = 'left';
+      c.textBaseline = 'middle';
+      c.fillText('beat', 10, dotY);
     }
 
     function auralDrawPhrase(notes) {
