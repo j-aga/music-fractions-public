@@ -880,12 +880,14 @@
         <!-- Test 1: the tune and the beat drawn together, after the round -->
         <div id="aural-panel-time" class="hidden mt-4">
           <p class="text-xs font-bold text-slate-500 mb-1">The tune you heard, and the beat you were clapping:</p>
-          <canvas id="aural-time-canvas" class="w-full h-40 rounded-lg bg-white"></canvas>
+          <canvas id="aural-time-canvas" class="w-full h-60 rounded-lg bg-white"></canvas>
           <p class="mt-1 text-[0.68rem] text-slate-500 font-medium leading-snug text-left px-1">
-            The <span class="font-extrabold text-slate-800">black notes</span> are the tune — some long, some short, some between the beats.
-            The <span class="font-extrabold text-blue-700">dots underneath</span> are the beat, always evenly spaced.
-            <span class="font-extrabold">Clap the dots, not the notes.</span>
-            After these 4 bars the music stopped and you kept the same dots going on your own.
+            <span class="font-extrabold text-slate-800">Black notes</span> are the tune — some long, some short, some between the beats.
+            The <span class="font-extrabold text-blue-700">beat</span> row is evenly spaced: that is what you clap.
+            The <span class="font-extrabold">you</span> row is where your claps actually landed —
+            <span class="font-extrabold text-emerald-600">green</span> on the beat,
+            <span class="font-extrabold text-rose-500">red</span> off it.
+            Each dashed line shows where that clap belonged, so the gap is how early or late you were.
           </p>
           <button id="aural-btn-time-replay"
             class="mt-2 w-full px-4 py-3 rounded-2xl bg-sky-500 hover:bg-sky-600 active:scale-95 text-white font-extrabold text-sm shadow transition-all">
@@ -3927,6 +3929,7 @@ function explorerExploreNote(type, beats, name) {
     function auralMatchTaps(expected, taps, tol) {
       const used = new Set();
       const matched = [];
+      const tapBeat = taps.map(() => -1);
       expected.forEach((t, i) => {
         let bestIdx = -1, bestDist = Infinity;
         taps.forEach((tap, j) => {
@@ -3934,17 +3937,18 @@ function explorerExploreNote(type, beats, name) {
           const d = Math.abs(tap - t);
           if (d < bestDist) { bestDist = d; bestIdx = j; }
         });
-        if (bestIdx >= 0 && bestDist <= tol) { used.add(bestIdx); matched.push(i); }
+        if (bestIdx >= 0 && bestDist <= tol) { used.add(bestIdx); matched.push(i); tapBeat[bestIdx] = i; }
       });
-      return { matched, extras: taps.length - used.size };
+      return { matched, extras: taps.length - used.size, tapBeat };
     }
 
     function auralFinishTime(q) {
       const beat = 60 / q.bpm;
       const tol = beat * 0.35;
+      const t0 = auralExpected[0];
       const playedBeats = q.playedBars * q.beatsPerBar;
       const silentBeats = auralExpected.length - playedBeats;
-      const { matched, extras } = auralMatchTaps(auralExpected, auralTaps, tol);
+      const { matched, extras, tapBeat } = auralMatchTaps(auralExpected, auralTaps, tol);
       const hitsPlayed = matched.filter(i => i < playedBeats).length;
       const hitsSilent = matched.length - hitsPlayed;
 
@@ -3953,24 +3957,51 @@ function explorerExploreNote(type, beats, name) {
         && hitsSilent / silentBeats >= 0.6
         && !tooManyTaps;
 
+      // Only say he followed the tune if the taps actually fit the tune better
+      // than the beat. Tap count alone does not show that, and guessing at a
+      // cause he did not commit is worse than describing what happened.
+      const melodyTimes = q.melody.map(n => t0 + n.beat * beat);
+      const tuneHits = auralMatchTaps(melodyTimes, auralTaps, tol).matched.length;
+      const followedTune = melodyTimes.length > 0
+        && tuneHits / melodyTimes.length >= 0.7
+        && tuneHits / auralTaps.length >= 0.7
+        && tuneHits > hitsPlayed + 1;
+      const playedEnd = t0 + playedBeats * beat;
+      const tapsAfter = auralTaps.filter(t => t > playedEnd - tol).length;
+      const stoppedWithMusic = tapsAfter <= 1 && hitsPlayed / playedBeats >= 0.5;
+      const drifted = tapsAfter >= silentBeats * 0.6 && hitsSilent / silentBeats < 0.5;
+
       let msg;
       if (pass) {
-        msg = `Well done — you kept the beat for ${hitsSilent} of ${silentBeats} beats after the music stopped. The picture below shows the tune above the beat you clapped.`;
-      } else if (tooManyTaps) {
-        msg = `That was ${extras} extra taps — you were clapping the tune, not the beat. Look below: clap the dots, which are evenly spaced, not the notes, which are not.`;
+        msg = `Well done — ${matched.length} of ${auralExpected.length} claps landed on the beat, including ${hitsSilent} of ${silentBeats} after the music stopped.`;
+      } else if (followedTune) {
+        // Checked before "stopped early": clapping the tune also leaves the
+        // silent bars empty, and this is the more useful thing to tell him.
+        msg = `Your claps followed the tune, not the beat — ${tuneHits} of them landed on a note. The beat is the row of dots; clap those instead.`;
+      } else if (stoppedWithMusic) {
+        msg = `You held the beat while the music played, then stopped when it did. The bottom row is empty — the beat has to keep going on its own.`;
+      } else if (drifted) {
+        msg = `You kept clapping after the music stopped, but the beat slid away — your marks drift further from the dashed lines as you go. Count out loud to hold it steady.`;
+      } else if (auralTaps.length > auralExpected.length * 1.25) {
+        msg = `There were ${auralExpected.length} beats and you clapped ${auralTaps.length} times. The dashed lines below show where each clap belonged.`;
       } else {
-        msg = `You got ${hitsPlayed}/${playedBeats} beats with the music and ${hitsSilent}/${silentBeats} after it stopped. Keeping going is the tricky bit — find the green dots below and count them out loud.`;
+        msg = `${matched.length} of ${auralExpected.length} claps landed on a beat. Your claps are the bottom row — see how far each one sits from its dashed line.`;
       }
-      auralRevealTime(q, new Set(matched));
+      auralRevealTime(q, {
+        t0, beat, tol, tapBeat,
+        hitBeats: new Set(matched),
+        taps: auralTaps,
+        playedBeats,
+      });
       auralRecord(pass, msg);
     }
 
-    /** Draw the tune he just heard with the beat ruled underneath it. */
-    function auralRevealTime(q, hitBeats) {
+    /** Draw the tune, the beat, and where his claps actually landed. */
+    function auralRevealTime(q, data) {
       const panel = document.getElementById('aural-panel-time');
       panel.classList.remove('hidden');
       requestAnimationFrame(() =>
-        auralDrawTimeReveal(document.getElementById('aural-time-canvas'), q, hitBeats));
+        auralDrawTimeReveal(document.getElementById('aural-time-canvas'), q, data));
     }
 
     function auralRunRhythm(q) {
@@ -4432,12 +4463,13 @@ function explorerExploreNote(type, beats, name) {
     }
 
     /**
-     * Test 1's answer: the tune on the staff with the beat ruled underneath it,
-     * so the uneven note lengths and the even pulse can be seen against each
-     * other. Beats he actually clapped are filled green, the ones he missed
-     * stay grey — the picture explains the mark as well as the music.
+     * Test 1's answer, drawn as two systems on one time scale: the four bars
+     * that played, then the four he had to keep going through alone. Under
+     * each, the beat as evenly spaced dots and HIS claps on a row of their
+     * own, every clap against a dashed line showing where it belonged. The
+     * gap between the dashed line and the mark is the whole lesson.
      */
-    function auralDrawTimeReveal(canvas, q, hitBeats = new Set()) {
+    function auralDrawTimeReveal(canvas, q, data) {
       const rect = canvas.getBoundingClientRect();
       if (!rect.width) return;
       const c = canvas.getContext('2d');
@@ -4445,42 +4477,94 @@ function explorerExploreNote(type, beats, name) {
       canvas.width = Math.round(rect.width * dpr);
       canvas.height = Math.round(rect.height * dpr);
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const w = rect.width, h = rect.height;
-      c.clearRect(0, 0, w, h);
+      const w = rect.width;
+      c.clearRect(0, 0, w, canvas.height);
 
-      const lineGap = 11;
-      const staffTop = 32;
-      const staffBottom = staffTop + lineGap * 4;
-      const totalBeats = q.playedBars * q.beatsPerBar;
+      const { t0, beat, tapBeat, hitBeats, taps, playedBeats } = data;
+      const perSystem = playedBeats;          // both halves are four bars
+      const lineGap = 10;
+      const leftEdge = 60;
+      const right = w - 10;
+      const beatW = (right - leftEdge) / perSystem;
+      const xOf = b => leftEdge + (b + 0.5) * beatW;
+      const tapPos = taps.map((t, j) => ({ pos: (t - t0) / beat, beatIdx: tapBeat[j] }));
 
+      const rowLabel = (text, y, colour) => {
+        c.fillStyle = colour;
+        c.font = '700 9px system-ui, sans-serif';
+        c.textAlign = 'left';
+        c.textBaseline = 'middle';
+        c.fillText(text, 8, y);
+      };
+
+      /** Beat dots and his claps for the `perSystem` beats starting at `from`. */
+      function drawRows(from, beatY, tapY) {
+        const to = from + perSystem;
+
+        c.save();
+        c.setLineDash([3, 3]);
+        c.strokeStyle = '#cbd5e1';
+        c.lineWidth = 1;
+        for (let i = from; i < to; i++) {
+          const x = xOf(i - from);
+          c.beginPath(); c.moveTo(x, beatY + 7); c.lineTo(x, tapY - 8); c.stroke();
+        }
+        c.restore();
+
+        for (let i = from; i < to; i++) {
+          const x = xOf(i - from);
+          const first = (i % q.beatsPerBar) === 0;
+          c.beginPath();
+          c.arc(x, beatY, first ? 5.5 : 4.2, 0, Math.PI * 2);
+          c.fillStyle = hitBeats.has(i) ? '#10b981' : '#e2e8f0';
+          c.fill();
+          c.strokeStyle = first ? '#1d4ed8' : '#94a3b8';
+          c.lineWidth = first ? 2 : 1;
+          c.stroke();
+
+          c.fillStyle = first ? '#1d4ed8' : '#94a3b8';
+          c.font = `${first ? '800' : '600'} 10px system-ui, sans-serif`;
+          c.textAlign = 'center';
+          c.textBaseline = 'top';
+          c.fillText(String((i % q.beatsPerBar) + 1), x, beatY + 8);
+        }
+
+        tapPos.forEach(({ pos, beatIdx }) => {
+          const rel = pos - from;
+          if (rel < -0.5 || rel >= perSystem - 0.5) return;
+          const onBeat = beatIdx >= from && beatIdx < to;
+          const x = xOf(rel);
+          c.fillStyle = onBeat ? '#10b981' : '#f43f5e';
+          c.beginPath();
+          c.roundRect(x - 2, tapY - 8, 4, 16, 2);
+          c.fill();
+        });
+      }
+
+      // ---- System 1: the music ----
+      const staffTop = 24, staffBottom = staffTop + lineGap * 4;
       c.strokeStyle = '#334155';
-      c.lineWidth = 1.2;
+      c.lineWidth = 1.1;
       for (let i = 0; i < 5; i++) {
         const y = staffTop + i * lineGap;
         c.beginPath(); c.moveTo(8, y); c.lineTo(w - 8, y); c.stroke();
       }
       drawTrebleClef(10, staffTop, lineGap, c);
 
-      let leftEdge = 46;
       c.fillStyle = '#1e293b';
-      c.font = `bold ${lineGap * 1.9}px Georgia, serif`;
+      c.font = `bold ${lineGap * 1.8}px Georgia, serif`;
       c.textAlign = 'center';
       c.textBaseline = 'middle';
-      c.fillText(String(q.beatsPerBar), leftEdge, staffTop + lineGap);
-      c.fillText('4', leftEdge, staffTop + lineGap * 3);
-      leftEdge += lineGap * 1.6;
-
-      const right = w - 12;
-      const beatW = (right - leftEdge) / totalBeats;
-      const xOf = beat => leftEdge + (beat + 0.5) * beatW;
+      c.fillText(String(q.beatsPerBar), 44, staffTop + lineGap);
+      c.fillText('4', 44, staffTop + lineGap * 3);
 
       c.strokeStyle = '#334155';
-      c.lineWidth = 1.6;
-      for (let b = q.beatsPerBar; b < totalBeats; b += q.beatsPerBar) {
+      c.lineWidth = 1.5;
+      for (let b = q.beatsPerBar; b < perSystem; b += q.beatsPerBar) {
         const x = leftEdge + b * beatW;
         c.beginPath(); c.moveTo(x, staffTop); c.lineTo(x, staffBottom); c.stroke();
       }
-      c.lineWidth = 2.4;
+      c.lineWidth = 2.2;
       c.beginPath(); c.moveTo(right, staffTop); c.lineTo(right, staffBottom); c.stroke();
 
       q.melody.forEach(n => {
@@ -4488,31 +4572,28 @@ function explorerExploreNote(type, beats, name) {
         if (idx == null) return;
         const x = xOf(n.beat);
         const y = staffBottom - (idx - 30) * (lineGap / 2);
-        if (idx <= 28) {   // middle C and below need a ledger line
-          c.strokeStyle = '#334155'; c.lineWidth = 1.8;
+        if (idx <= 28) {
+          c.strokeStyle = '#334155'; c.lineWidth = 1.6;
           c.beginPath();
-          c.moveTo(x - lineGap * 1.15, staffBottom + lineGap);
-          c.lineTo(x + lineGap * 1.15, staffBottom + lineGap);
+          c.moveTo(x - lineGap * 1.1, staffBottom + lineGap);
+          c.lineTo(x + lineGap * 1.1, staffBottom + lineGap);
           c.stroke();
         }
-        // Black, as printed music is — the beat row below owns the colour.
         c.strokeStyle = '#0f172a';
         c.fillStyle = '#0f172a';
-        c.lineWidth = 1.8;
+        c.lineWidth = 1.7;
         c.beginPath();
-        c.ellipse(x, y, lineGap * 0.6, lineGap * 0.46, -0.3, 0, Math.PI * 2);
-        if (n.dur >= 2) {   // a minim is hollow: one sound, two claps
+        c.ellipse(x, y, lineGap * 0.58, lineGap * 0.44, -0.3, 0, Math.PI * 2);
+        if (n.dur >= 2) {          // a minim: one note held over two claps
           c.save(); c.fillStyle = '#ffffff'; c.fill(); c.restore(); c.stroke();
         } else {
           c.fill();
         }
-
         const up = idx < 34;
-        const sx = x + (up ? lineGap * 0.58 : -lineGap * 0.58);
-        const sy = y + (up ? -lineGap * 3 : lineGap * 3);
+        const sx = x + (up ? lineGap * 0.56 : -lineGap * 0.56);
+        const sy = y + (up ? -lineGap * 2.9 : lineGap * 2.9);
         c.beginPath(); c.moveTo(sx, y); c.lineTo(sx, sy); c.stroke();
-
-        if (n.dur < 1) {   // quaver: two sounds inside one clap
+        if (n.dur < 1) {           // quaver: two notes inside one clap
           const d = up ? lineGap : -lineGap;
           c.beginPath();
           c.moveTo(sx, sy);
@@ -4521,35 +4602,30 @@ function explorerExploreNote(type, beats, name) {
         }
       });
 
-      // A tinted band so the beat reads as its own layer under the music.
-      const dotY = staffBottom + lineGap * 2.2;
-      c.fillStyle = '#eff6ff';
-      c.beginPath();
-      c.roundRect(8, dotY - lineGap, w - 16, lineGap * 2.5, 6);
-      c.fill();
+      const beatY1 = staffBottom + 26, tapY1 = beatY1 + 34;
+      rowLabel('beat', beatY1, '#1d4ed8');
+      rowLabel('you', tapY1, '#475569');
+      drawRows(0, beatY1, tapY1);
 
-      for (let i = 0; i < totalBeats; i++) {
-        const x = xOf(i);
-        const first = i % q.beatsPerBar === 0;
-        c.beginPath();
-        c.arc(x, dotY, first ? 5.5 : 4.2, 0, Math.PI * 2);
-        c.fillStyle = hitBeats.has(i) ? '#10b981' : '#cbd5e1';
-        c.fill();
-        if (first) { c.strokeStyle = '#1d4ed8'; c.lineWidth = 2; c.stroke(); }
+      // ---- System 2: after the music stopped ----
+      const divY = tapY1 + 20;
+      c.save();
+      c.setLineDash([2, 4]);
+      c.strokeStyle = '#e2e8f0';
+      c.lineWidth = 1;
+      c.beginPath(); c.moveTo(8, divY); c.lineTo(w - 8, divY); c.stroke();
+      c.restore();
 
-        c.fillStyle = first ? '#1d4ed8' : '#94a3b8';
-        c.font = `${first ? '800' : '600'} 11px system-ui, sans-serif`;
-        c.textAlign = 'center';
-        c.textBaseline = 'top';
-        c.fillText(String((i % q.beatsPerBar) + 1), x, dotY + 9);
-      }
-
-      // Name the lower row, so the two layers are distinguished by more than colour.
       c.fillStyle = '#64748b';
-      c.font = '700 10px system-ui, sans-serif';
-      c.textAlign = 'left';
+      c.font = '800 10px system-ui, sans-serif';
+      c.textAlign = 'center';
       c.textBaseline = 'middle';
-      c.fillText('beat', 10, dotY);
+      c.fillText('🤫  music stopped — you keep the same beat going', w / 2, divY + 14);
+
+      const beatY2 = divY + 36, tapY2 = beatY2 + 34;
+      rowLabel('beat', beatY2, '#1d4ed8');
+      rowLabel('you', tapY2, '#475569');
+      drawRows(perSystem, beatY2, tapY2);
     }
 
     function auralDrawPhrase(notes) {
